@@ -69,7 +69,7 @@ app.get("/", (req, res) => {
 // =====================================================
 //               IMPORT ROUTES
 // =====================================================
-// import authRoutes from "./routes/auth.routes.js";
+import authRoutes from "./routes/auth.routes.js";
 // import productRoutes from "./routes/products.routes.js";
 // import receiptRoutes from "./routes/receipts.routes.js";
 // import deliveryRoutes from "./routes/delivery.routes.js";
@@ -82,7 +82,7 @@ app.get("/", (req, res) => {
 // =====================================================
 //               REGISTER ROUTES
 // =====================================================
-// app.use("/api/v1/auth", authRoutes);
+app.use("/api/v1/auth", authRoutes);
 // app.use("/api/v1/products", productRoutes);
 // app.use("/api/v1/receipts", receiptRoutes);
 // app.use("/api/v1/deliveries", deliveryRoutes);
