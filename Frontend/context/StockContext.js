@@ -1,100 +1,83 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, useMemo } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 import { useAuth } from "./AuthContext";
 
 const StockContext = createContext();
-
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api/v1";
 
 export function StockProvider({ children }) {
   const { token, isAuthenticated, loading: authLoading } = useAuth();
 
-  // UI State
+  // UI state
   const [currentView, setCurrentView] = useState("dashboard");
   const [activeOperationTab, setActiveOperationTab] = useState("receipts");
-  const [theme, setTheme] = useState("light");
 
-  // API Data
+  // Data
   const [warehouses, setWarehouses] = useState([]);
-  const [categories, setCategories] = useState([]);
   const [products, setProducts] = useState([]);
-  const [movements, setMovements] = useState([]); // audit trail
-  const [operations, setOperations] = useState([]); // receipts + deliveries + transfers + adjustments
+  const [categories, setCategories] = useState([]);
+  const [movements, setMovements] = useState([]);
+  const [operations, setOperations] = useState([]);
 
+  // Loading
   const [loading, setLoading] = useState(true);
 
-  // API Caller Helper
-  const api = async (endpoint, options = {}) => {
-    const headers = {
-      "Content-Type": "application/json",
-      ...(options.headers || {})
+  // ------------- API HELPER (NO success wrapper required) ------------
+  const api = async (endpoint, method = "GET", body = null) => {
+    const options = {
+      method,
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: token ? `Bearer ${token}` : "",
+      },
     };
 
-    if (token) headers["Authorization"] = `Bearer ${token}`;
+    if (body) options.body = JSON.stringify(body);
 
-    const res = await fetch(`${API}${endpoint}`, {
-      ...options,
-      headers,
-    });
+    const res = await fetch(`${API}${endpoint}`, options);
 
-    const data = await res.json().catch(() => ({}));
+    // If 404 → return empty array/object
+    if (res.status === 404) return [];
 
-    return data; // always returns { success, data, ... }
+    let data;
+    try {
+      data = await res.json();
+    } catch {
+      data = [];
+    }
+
+    return data; // backend returns raw arrays
   };
 
-  // Load All Data
+  // ---------------------- LOAD DATA ------------------------
   const fetchAll = async () => {
+    setLoading(true);
+
     if (!isAuthenticated || !token) {
+      setWarehouses([]);
+      setCategories([]);
+      setProducts([]);
+      setMovements([]);
+      setOperations([]);
       setLoading(false);
       return;
     }
 
-    setLoading(true);
-
     try {
-      const [
-        wh, cat, prod,
-        receipts, deliveries,
-        transfers, adjustments,
-        ledger
-      ] = await Promise.all([
+      const [wh, cat, prod] = await Promise.all([
         api("/warehouses"),
         api("/categories"),
         api("/products"),
-        api("/receipts"),
-        api("/deliveries"),
-        api("/transfers"),
-        api("/adjustments"),
-        api("/ledger")
       ]);
 
-      setWarehouses(wh.data || []);
-      setCategories(cat.data || []);
-
-      // ensure products have stockByLocation
-      const normalizedProducts = (prod.data || []).map(p => ({
-        ...p,
-        stockByLocation: p.stockByLocation || {},
-      }));
-
-      setProducts(normalizedProducts);
-
-      // merge all operations
-      const mergedOps = [
-        ...(receipts.data || []).map(op => ({ ...op, type: "RECEIPT" })),
-        ...(deliveries.data || []).map(op => ({ ...op, type: "DELIVERY" })),
-        ...(transfers.data || []).map(op => ({ ...op, type: "TRANSFER" })),
-        ...(adjustments.data || []).map(op => ({ ...op, type: "ADJUSTMENT" })),
-      ];
-
-      setOperations(mergedOps);
-
-      // movement history
-      setMovements(ledger.data || []);
-
-    } catch (e) {
-      console.error("Stock load error", e);
+      setWarehouses(Array.isArray(wh) ? wh : []);
+      setCategories(Array.isArray(cat) ? cat : []);
+      setProducts(Array.isArray(prod) ? prod : []);
+      setMovements([]); // no backend yet
+      setOperations([]); // no backend yet
+    } catch (error) {
+      console.error("Stock fetch error:", error);
     }
 
     setLoading(false);
@@ -104,132 +87,34 @@ export function StockProvider({ children }) {
     if (!authLoading) fetchAll();
   }, [authLoading, isAuthenticated, token]);
 
-  // Derived Product Stats
-  const productsWithTotals = useMemo(() => {
-    return products.map(p => {
-      const totalStock = Object.values(p.stockByLocation || {})
-        .reduce((s, q) => s + Number(q || 0), 0);
-
-      return { ...p, totalStock };
-    });
-  }, [products]);
-
-  const stats = useMemo(() => {
-    const totalProducts = productsWithTotals.length;
-
-    const lowStockItems = productsWithTotals.filter(
-      p => Number(p.totalStock) <= Number(p.reorderPoint || 0)
-    );
-
-    const totalValue = productsWithTotals.reduce(
-      (sum, p) => sum + (p.totalStock * (p.price || 0)),
+  // ---------------------- STATS ------------------------
+  const stats = {
+    totalProducts: products.length,
+    lowStockCount: products.filter((p) => (p.totalStock || 0) <= (p.reorderPoint || 0)).length,
+    totalValue: products.reduce(
+      (sum, p) => sum + (p.totalStock || 0) * (p.price || 0),
       0
-    );
-
-    return {
-      totalProducts,
-      lowStockCount: lowStockItems.length,
-      totalValue,
-      lowStockItems,
-    };
-  }, [productsWithTotals]);
-
-  // CRUD Functions
-  const addProduct = async (payload) => {
-    const res = await api("/products", {
-      method: "POST",
-      body: JSON.stringify(payload)
-    });
-    if (res.success) {
-      setProducts(prev => [...prev, res.data]);
-    }
-    return res;
+    ),
   };
 
-  const updateProduct = async (id, payload) => {
-    const res = await api(`/products/${id}`, {
-      method: "PUT",
-      body: JSON.stringify(payload),
-    });
-    if (res.success) {
-      setProducts(prev => prev.map(p => p.id === id ? res.data : p));
-    }
-    return res;
-  };
-
-  const deleteProduct = async (id) => {
-    const res = await api(`/products/${id}`, { method: "DELETE" });
-    if (res.success) {
-      setProducts(prev => prev.filter(p => p.id !== id));
-    }
-    return res;
-  };
-
-  const addWarehouse = async (payload) => {
-    const res = await api("/warehouses", {
-      method: "POST",
-      body: JSON.stringify(payload),
-    });
-    if (res.success) {
-      setWarehouses(prev => [...prev, res.data]);
-    }
-    return res;
-  };
-
-  const addCategory = async (payload) => {
-    const res = await api("/categories", {
-      method: "POST",
-      body: JSON.stringify(payload),
-    });
-    if (res.success) {
-      setCategories(prev => [...prev, res.data]);
-    }
-    return res;
-  };
-
-  const addOperation = async (payload) => {
-    const res = await api(`/${payload.type.toLowerCase()}s`, {
-      method: "POST",
-      body: JSON.stringify(payload),
-    });
-
-    if (res.success) {
-      setOperations(prev => [res.data, ...prev]);
-    }
-
-    return res;
-  };
-
-  const toggleTheme = () => setTheme(t => t === "dark" ? "light" : "dark");
-
-  // Final Value
+  // ---------------------- PROVIDER VALUE ------------------------
   return (
     <StockContext.Provider
       value={{
         loading,
-        theme,
-        toggleTheme,
+        warehouses,
+        products,
+        categories,
+        movements,
+        operations,
+
+        stats,
 
         currentView,
         setCurrentView,
         activeOperationTab,
         setActiveOperationTab,
 
-        warehouses,
-        products: productsWithTotals,
-        rawProducts: products,
-        categories,
-        operations,
-        movements,
-
-        stats,
-
-        addProduct,
-        updateProduct,
-        deleteProduct,
-        addCategory,
-        addWarehouse,
-        addOperation,
         reload: fetchAll,
       }}
     >
