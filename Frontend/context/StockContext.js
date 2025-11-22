@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useContext, useEffect, useState, useMemo } from "react";
 import { useAuth } from "./AuthContext";
 
 const StockContext = createContext();
@@ -8,26 +8,23 @@ const StockContext = createContext();
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api/v1";
 
 export function StockProvider({ children }) {
-  const { isAuthenticated, loading: authLoading } = useAuth();
+  const { token, isAuthenticated, loading: authLoading } = useAuth();
 
-  // UI Navigation (Dashboard → Products → Operations)
+  // UI State
   const [currentView, setCurrentView] = useState("dashboard");
   const [activeOperationTab, setActiveOperationTab] = useState("receipts");
-
-  // DATA STATES
-  const [warehouses, setWarehouses] = useState([]);
-  const [products, setProducts] = useState([]);
-  const [categories, setCategories] = useState([]);
-  const [movements, setMovements] = useState([]);
-  const [operations, setOperations] = useState([]);
-
-  // UI STATE
   const [theme, setTheme] = useState("light");
+
+  // API Data
+  const [warehouses, setWarehouses] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [products, setProducts] = useState([]);
+  const [movements, setMovements] = useState([]); // audit trail
+  const [operations, setOperations] = useState([]); // receipts + deliveries + transfers + adjustments
+
   const [loading, setLoading] = useState(true);
 
-  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-
-  // BASIC FETCH HELPER (with token)
+  // API Caller Helper
   const api = async (endpoint, options = {}) => {
     const headers = {
       "Content-Type": "application/json",
@@ -43,70 +40,89 @@ export function StockProvider({ children }) {
 
     const data = await res.json().catch(() => ({}));
 
-    return {
-      success: res.ok,
-      status: res.status,
-      data: data.data || [],
-      message: data.message,
-    };
+    return data; // always returns { success, data, ... }
   };
 
-  // LOAD ALL (WAREHOUSE / CATEGORIES / PRODUCTS / MOVEMENTS / OPERATIONS)
+  // Load All Data
   const fetchAll = async () => {
-    setLoading(true);
-
     if (!isAuthenticated || !token) {
       setLoading(false);
       return;
     }
 
-    const [w, c, p, m, o] = await Promise.all([
-      api("/warehouses"),
-      api("/categories"),
-      api("/products"),
-      api("/movements"),
-      api("/operations"),
-    ]);
+    setLoading(true);
 
-    setWarehouses(w.data || []);
-    setCategories(c.data || []);
-    setProducts(p.data || []);
-    setMovements(m.data || []);
-    setOperations(o.data || []);
+    try {
+      const [
+        wh, cat, prod,
+        receipts, deliveries,
+        transfers, adjustments,
+        ledger
+      ] = await Promise.all([
+        api("/warehouses"),
+        api("/categories"),
+        api("/products"),
+        api("/receipts"),
+        api("/deliveries"),
+        api("/transfers"),
+        api("/adjustments"),
+        api("/ledger")
+      ]);
+
+      setWarehouses(wh.data || []);
+      setCategories(cat.data || []);
+
+      // ensure products have stockByLocation
+      const normalizedProducts = (prod.data || []).map(p => ({
+        ...p,
+        stockByLocation: p.stockByLocation || {},
+      }));
+
+      setProducts(normalizedProducts);
+
+      // merge all operations
+      const mergedOps = [
+        ...(receipts.data || []).map(op => ({ ...op, type: "RECEIPT" })),
+        ...(deliveries.data || []).map(op => ({ ...op, type: "DELIVERY" })),
+        ...(transfers.data || []).map(op => ({ ...op, type: "TRANSFER" })),
+        ...(adjustments.data || []).map(op => ({ ...op, type: "ADJUSTMENT" })),
+      ];
+
+      setOperations(mergedOps);
+
+      // movement history
+      setMovements(ledger.data || []);
+
+    } catch (e) {
+      console.error("Stock load error", e);
+    }
 
     setLoading(false);
   };
 
   useEffect(() => {
-    if (!authLoading && isAuthenticated) {
-      fetchAll();
-    }
-  }, [authLoading, isAuthenticated]);
+    if (!authLoading) fetchAll();
+  }, [authLoading, isAuthenticated, token]);
 
-  // DERIVED: Add totalStock + stockByLocation normalization
+  // Derived Product Stats
   const productsWithTotals = useMemo(() => {
-    return products.map((p) => {
-      const stockByLocation = p.stockByLocation || {};
-      const totalStock = Object.values(stockByLocation).reduce(
-        (sum, q) => sum + Number(q || 0),
-        0
-      );
+    return products.map(p => {
+      const totalStock = Object.values(p.stockByLocation || {})
+        .reduce((s, q) => s + Number(q || 0), 0);
 
       return { ...p, totalStock };
     });
   }, [products]);
 
-  // DASHBOARD SUMMARY STATS
   const stats = useMemo(() => {
     const totalProducts = productsWithTotals.length;
 
-    const lowStockItems =
-      productsWithTotals.filter(
-        (p) => Number(p.totalStock) <= Number(p.reorderPoint)
-      ) || [];
+    const lowStockItems = productsWithTotals.filter(
+      p => Number(p.totalStock) <= Number(p.reorderPoint || 0)
+    );
 
     const totalValue = productsWithTotals.reduce(
-      (sum, p) => sum + p.totalStock * Number(p.price || 0),
+      (sum, p) => sum + (p.totalStock * (p.price || 0)),
       0
     );
 
@@ -118,130 +134,102 @@ export function StockProvider({ children }) {
     };
   }, [productsWithTotals]);
 
-  // CRUD: WAREHOUSE
-  const addWarehouse = async (data) => {
-    const res = await api("/warehouses", {
-      method: "POST",
-      body: JSON.stringify(data),
-    });
-
-    if (res.success) setWarehouses([...warehouses, res.data]);
-    return res;
-  };
-
-  // CRUD: CATEGORY
-  const addCategory = async (data) => {
-    const res = await api("/categories", {
-      method: "POST",
-      body: JSON.stringify(data),
-    });
-
-    if (res.success) setCategories([...categories, res.data]);
-    return res;
-  };
-
-  // CRUD: PRODUCT
-  const addProduct = async (data) => {
+  // CRUD Functions
+  const addProduct = async (payload) => {
     const res = await api("/products", {
       method: "POST",
-      body: JSON.stringify(data),
+      body: JSON.stringify(payload)
     });
-
-    if (res.success) setProducts([...products, res.data]);
+    if (res.success) {
+      setProducts(prev => [...prev, res.data]);
+    }
     return res;
   };
 
-  const updateProduct = async (id, updates) => {
+  const updateProduct = async (id, payload) => {
     const res = await api(`/products/${id}`, {
       method: "PUT",
-      body: JSON.stringify(updates),
+      body: JSON.stringify(payload),
     });
-
     if (res.success) {
-      setProducts(products.map((p) => (p.id === id ? res.data : p)));
+      setProducts(prev => prev.map(p => p.id === id ? res.data : p));
     }
-
     return res;
   };
 
   const deleteProduct = async (id) => {
     const res = await api(`/products/${id}`, { method: "DELETE" });
+    if (res.success) {
+      setProducts(prev => prev.filter(p => p.id !== id));
+    }
+    return res;
+  };
+
+  const addWarehouse = async (payload) => {
+    const res = await api("/warehouses", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+    if (res.success) {
+      setWarehouses(prev => [...prev, res.data]);
+    }
+    return res;
+  };
+
+  const addCategory = async (payload) => {
+    const res = await api("/categories", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+    if (res.success) {
+      setCategories(prev => [...prev, res.data]);
+    }
+    return res;
+  };
+
+  const addOperation = async (payload) => {
+    const res = await api(`/${payload.type.toLowerCase()}s`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
 
     if (res.success) {
-      setProducts(products.filter((p) => p.id !== id));
+      setOperations(prev => [res.data, ...prev]);
     }
 
     return res;
   };
 
-  // OPERATIONS (Receipts, Deliveries, Adjustments)
-  const addOperation = async (data) => {
-    const res = await api("/operations", {
-      method: "POST",
-      body: JSON.stringify(data),
-    });
+  const toggleTheme = () => setTheme(t => t === "dark" ? "light" : "dark");
 
-    if (res.success) setOperations([res.data, ...operations]);
-
-    return res;
-  };
-
-  const validateOperation = async (operationId) => {
-    const res = await api(`/operations/${operationId}/validate`, {
-      method: "POST",
-    });
-
-    if (res.success) fetchAll(); // refresh all stock & movement
-
-    return res;
-  };
-
-  // MOVEMENTS (simple stock history)
-  const addMovement = async (data) => {
-    const res = await api("/movements", {
-      method: "POST",
-      body: JSON.stringify(data),
-    });
-
-    if (res.success) setMovements([res.data, ...movements]);
-
-    return res;
-  };
-
-  const toggleTheme = () =>
-    setTheme((t) => (t === "dark" ? "light" : "dark"));
-
+  // Final Value
   return (
     <StockContext.Provider
       value={{
-        // UI
         loading,
         theme,
         toggleTheme,
+
         currentView,
         setCurrentView,
         activeOperationTab,
         setActiveOperationTab,
 
-        // Data
         warehouses,
-        categories,
         products: productsWithTotals,
         rawProducts: products,
-        movements,
+        categories,
         operations,
+        movements,
+
         stats,
 
-        // CRUD
-        addWarehouse,
-        addCategory,
         addProduct,
         updateProduct,
         deleteProduct,
+        addCategory,
+        addWarehouse,
         addOperation,
-        validateOperation,
-        addMovement,
-
         reload: fetchAll,
       }}
     >
