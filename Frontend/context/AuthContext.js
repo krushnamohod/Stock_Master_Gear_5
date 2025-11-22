@@ -1,85 +1,102 @@
 "use client"
 
-import { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, useContext, useEffect, useState } from "react"
 
 const AuthContext = createContext()
+const API_BASE = "http://localhost:3000/api/v1"
 
 export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null)
+  const [token, setToken] = useState(null)
   const [loading, setLoading] = useState(true)
 
+  // Load session from localStorage
   useEffect(() => {
-    // Check for stored user on mount
-    const storedUser = localStorage.getItem('stockmaster_user')
-    if (storedUser) {
-      try {
-        setCurrentUser(JSON.parse(storedUser))
-      } catch (e) {
-        console.error("Failed to parse stored user", e)
-        localStorage.removeItem('stockmaster_user')
-      }
+    const storedToken = localStorage.getItem("stockmaster_token")
+    const storedUser = localStorage.getItem("stockmaster_user")
+
+    if (storedToken && storedUser) {
+      setToken(storedToken)
+      setCurrentUser(JSON.parse(storedUser))
     }
     setLoading(false)
   }, [])
 
-  const login = async (loginId, password) => {
-    // Mock login logic
-    // In a real app, this would call an API
-    // For demo purposes, accept any non-empty credentials
-    if (loginId && password) {
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 500))
+  // ------- LOGIN (REAL BACKEND) -------
+  const login = async (email, password) => {
+    try {
+      const res = await fetch(`${API_BASE}/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      })
 
-      const user = {
-        id: '1',
-        loginId: loginId,
-        name: loginId.split('@')[0] || 'Admin User',
-        role: 'admin',
-        email: loginId.includes('@') ? loginId : `${loginId}@example.com`
+      const data = await res.json()
+
+      if (!res.ok) {
+        return { success: false, error: data.message || "Invalid credentials" }
       }
 
-      setCurrentUser(user)
-      localStorage.setItem('stockmaster_user', JSON.stringify(user))
+      // Save session
+      localStorage.setItem("stockmaster_token", data.token)
+      localStorage.setItem("stockmaster_user", JSON.stringify(data.user))
+
+      setToken(data.token)
+      setCurrentUser(data.user)
+
       return { success: true }
+    } catch (err) {
+      return { success: false, error: "Network error" }
     }
-    return { success: false, error: 'Invalid credentials' }
   }
 
+  // ------- SIGNUP (REAL BACKEND) -------
+  const signup = async (name, email, password) => {
+    try {
+      const res = await fetch(`${API_BASE}/auth/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email, password }),
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        return { success: false, error: data.message || "Signup failed" }
+      }
+
+      return { success: true }
+    } catch {
+      return { success: false, error: "Network error" }
+    }
+  }
+
+  // ------- LOGOUT -------
   const logout = () => {
+    localStorage.removeItem("stockmaster_token")
+    localStorage.removeItem("stockmaster_user")
     setCurrentUser(null)
-    localStorage.removeItem('stockmaster_user')
+    setToken(null)
   }
 
-  const signup = async (userData) => {
-    // Mock signup
-    await new Promise(resolve => setTimeout(resolve, 500))
-
-    const user = {
-      id: Date.now().toString(),
-      ...userData,
-      role: 'user'
-    }
-
-    setCurrentUser(user)
-    localStorage.setItem('stockmaster_user', JSON.stringify(user))
-    return { success: true }
-  }
-
+  // ------- RESET PASSWORD MOCK -------
   const resetPassword = async (email) => {
-    await new Promise(resolve => setTimeout(resolve, 500))
     return { success: true }
   }
 
   return (
-    <AuthContext.Provider value={{
-      currentUser,
-      isAuthenticated: !!currentUser,
-      login,
-      logout,
-      signup,
-      resetPassword,
-      loading
-    }}>
+    <AuthContext.Provider
+      value={{
+        currentUser,
+        token,
+        isAuthenticated: !!token,
+        login,
+        signup,
+        logout,
+        resetPassword,
+        loading,
+      }}
+    >
       {!loading && children}
     </AuthContext.Provider>
   )
