@@ -68,31 +68,35 @@ export function SignUpScreen({ onSwitchToLogin }) {
         setTouched(prev => ({ ...prev, [field]: true }))
     }
 
-    const handleSubmit = async (e) => {
-        e.preventDefault()
+const handleSubmit = async (e) => {
+    e.preventDefault()
 
-        // Mark all fields as touched
-        setTouched({
-            loginId: true,
-            email: true,
-            password: true,
-            confirmPassword: true
-        })
+    setTouched({
+        loginId: true,
+        email: true,
+        password: true,
+        confirmPassword: true
+    })
 
-        // Check if there are any errors
-        if (Object.keys(errors).length > 0) {
-            return
-        }
+    if (Object.keys(errors).length > 0) return
 
-        setLoading(true)
-        const result = signup(formData.loginId, formData.email, formData.password, formData.confirmPassword)
+    setLoading(true)
 
-        if (!result.success) {
-            setErrors({ general: result.error })
-        }
+    const result = await signup(
+        formData.loginId,
+        formData.email,
+        formData.password
+    )
 
-        setLoading(false)
+    if (!result.success) {
+        setErrors({ general: result.error })
+    } else {
+        onSwitchToLogin()  // 🔥 redirect to login page
     }
+
+    setLoading(false)
+}
+
 
     const getPasswordStrength = () => {
         const password = formData.password

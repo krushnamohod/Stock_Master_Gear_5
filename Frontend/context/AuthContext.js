@@ -1,129 +1,195 @@
 "use client"
 
-import { createContext, useContext, useState } from 'react'
+import { createContext, useContext, useState, useEffect } from "react"
 
 const AuthContext = createContext()
 
-// Mock user database
-const INITIAL_USERS = [
-    {
-        loginId: "admin123",
-        email: "admin@example.com",
-        password: "Password@123"
-    }
-]
-
 export function AuthProvider({ children }) {
-    const [users, setUsers] = useState(INITIAL_USERS)
-    const [currentUser, setCurrentUser] = useState(null)
-    const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [currentUser, setCurrentUser] = useState(null)
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [loading, setLoading] = useState(true)
 
-    // Validation utilities
-    const validateLoginId = (loginId) => {
-        if (loginId.length < 6 || loginId.length > 12) {
-            return "Login ID must be 6-12 characters"
-        }
-        return null
+  const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api/v1"
+
+  // ---------------------------
+  // Client-side validation helpers (kept from your original)
+  // ---------------------------
+  const validateLoginId = (loginId) => {
+    if (!loginId) return "Login ID required"
+    if (loginId.length < 6 || loginId.length > 12) {
+      return "Login ID must be 6-12 characters"
     }
+    return null
+  }
 
-    const validateEmail = (email) => {
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-        if (!emailRegex.test(email)) {
-            return "Invalid email format"
-        }
-        return null
+  const validateEmail = (email) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!email) return "Email required"
+    if (!emailRegex.test(email)) {
+      return "Invalid email format"
     }
+    return null
+  }
 
-    const validatePassword = (password) => {
-        if (password.length <= 8) {
-            return "Password must be greater than 8 characters"
-        }
-        if (!/[a-z]/.test(password)) {
-            return "Password must contain at least one lowercase letter"
-        }
-        if (!/[A-Z]/.test(password)) {
-            return "Password must contain at least one uppercase letter"
-        }
-        if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
-            return "Password must contain at least one special character"
-        }
-        return null
+  const validatePassword = (password) => {
+    if (!password) return "Password required"
+    if (password.length <= 8) {
+      return "Password must be greater than 8 characters"
     }
-
-    const isLoginIdUnique = (loginId) => {
-        return !users.some(user => user.loginId === loginId)
+    if (!/[a-z]/.test(password)) {
+      return "Password must contain at least one lowercase letter"
     }
-
-    const isEmailUnique = (email) => {
-        return !users.some(user => user.email === email)
+    if (!/[A-Z]/.test(password)) {
+      return "Password must contain at least one uppercase letter"
     }
-
-    // Authentication functions
-    const login = (loginId, password) => {
-        const user = users.find(u => u.loginId === loginId && u.password === password)
-        if (user) {
-            setCurrentUser(user)
-            setIsAuthenticated(true)
-            return { success: true }
-        }
-        return { success: false, error: "Invalid Login Id or Password" }
+    if (!/[!@#$%^&*(),.?\":{}|<>]/.test(password)) {
+      return "Password must contain at least one special character"
     }
+    return null
+  }
 
-    const signup = (loginId, email, password, confirmPassword) => {
-        // Validate all fields
-        const loginIdError = validateLoginId(loginId)
-        if (loginIdError) return { success: false, error: loginIdError }
+  // NOTE: Backend currently has no /auth/check endpoints.
+  // These functions are optimistic (client-side). To make them authoritative,
+  // add endpoints like GET /api/v1/auth/check-email?email=... and /auth/check-login?loginId=...
+  const isLoginIdUnique = async (loginId) => {
+    // optimistic client-side check (format only)
+    const err = validateLoginId(loginId)
+    if (err) return false
+    return true
+  }
 
-        if (!isLoginIdUnique(loginId)) {
-            return { success: false, error: "Login ID already exists" }
+  const isEmailUnique = async (email) => {
+    // optimistic client-side check (format only)
+    const err = validateEmail(email)
+    if (err) return false
+    return true
+  }
+
+  // ---------------------------
+  // Load user if token exists
+  // ---------------------------
+  useEffect(() => {
+    const load = async () => {
+      const token = localStorage.getItem("token")
+      if (!token) {
+        setLoading(false)
+        return
+      }
+
+      try {
+        const res = await fetch(`${API_BASE}/auth/me`, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        if (!res.ok) {
+          localStorage.removeItem("token")
+          setLoading(false)
+          return
         }
-
-        const emailError = validateEmail(email)
-        if (emailError) return { success: false, error: emailError }
-
-        if (!isEmailUnique(email)) {
-            return { success: false, error: "Email already exists" }
-        }
-
-        const passwordError = validatePassword(password)
-        if (passwordError) return { success: false, error: passwordError }
-
-        if (password !== confirmPassword) {
-            return { success: false, error: "Passwords do not match" }
-        }
-
-        // Add new user
-        const newUser = { loginId, email, password }
-        setUsers([...users, newUser])
-
-        // Auto-login after signup
-        setCurrentUser(newUser)
+        const data = await res.json()
+        setCurrentUser(data)
         setIsAuthenticated(true)
-
-        return { success: true }
+      } catch (err) {
+        localStorage.removeItem("token")
+      } finally {
+        setLoading(false)
+      }
     }
 
-    const logout = () => {
-        setCurrentUser(null)
-        setIsAuthenticated(false)
+    load()
+  }, [])
+
+  // ---------------------------
+  // LOGIN (expects email)
+  // ---------------------------
+  const login = async (email, password) => {
+    try {
+      const res = await fetch(`${API_BASE}/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password })
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        return { success: false, error: data.message || "Login failed" }
+      }
+
+      localStorage.setItem("token", data.token)
+      setCurrentUser(data.user)
+      setIsAuthenticated(true)
+
+      return { success: true }
+    } catch (err) {
+      return { success: false, error: "Network error. Try again." }
+    }
+  }
+
+  // ---------------------------
+  // SIGNUP -> call backend register
+  // We map `loginId` -> `name` when calling backend (backend expects name,email,password)
+  // ---------------------------
+const signup = async (loginId, email, password) => {
+  try {
+    const loginErr = validateLoginId(loginId)
+    if (loginErr) return { success: false, error: loginErr }
+
+    const emailErr = validateEmail(email)
+    if (emailErr) return { success: false, error: emailErr }
+
+    const passErr = validatePassword(password)
+    if (passErr) return { success: false, error: passErr }
+
+    const res = await fetch(`${API_BASE}/auth/register`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: loginId, email, password })
+    })
+
+    const data = await res.json()
+
+    if (!res.ok) {
+      return { success: false, error: data.message || "Signup failed" }
     }
 
-    return (
-        <AuthContext.Provider value={{
-            currentUser,
-            isAuthenticated,
-            login,
-            signup,
-            logout,
-            validateLoginId,
-            validateEmail,
-            validatePassword,
-            isLoginIdUnique,
-            isEmailUnique
-        }}>
-            {children}
-        </AuthContext.Provider>
-    )
+    // DO NOT auto-login
+    return { success: true }
+
+  } catch (err) {
+    return { success: false, error: "Network error. Try again." }
+  }
+}
+
+
+  // ---------------------------
+  // LOGOUT
+  // ---------------------------
+  const logout = () => {
+    localStorage.removeItem("token")
+    setCurrentUser(null)
+    setIsAuthenticated(false)
+  }
+
+  return (
+    <AuthContext.Provider
+      value={{
+        currentUser,
+        isAuthenticated,
+        login,
+        signup,
+        logout,
+        loading,
+        // validation helpers for SignUpScreen
+        validateLoginId,
+        validateEmail,
+        validatePassword,
+        isLoginIdUnique, // currently optimistic
+        isEmailUnique    // currently optimistic
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  )
 }
 
 export const useAuth = () => useContext(AuthContext)
