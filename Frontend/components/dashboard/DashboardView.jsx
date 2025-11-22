@@ -10,29 +10,51 @@ import { cn } from "@/lib/utils"
 import { AlertTriangle, ArrowDownLeft, ArrowUpRight, Package } from "lucide-react"
 
 export function DashboardView() {
-    const { stats, theme, operations, setCurrentView, setActiveOperationTab } = useStock()
+    const {
+        stats,
+        theme,
+        operations = [],     // 🛡️ Safe default
+        loading = false,     // 🛡️ Safe default
+        setCurrentView,
+        setActiveOperationTab
+    } = useStock()
 
-    // Helper to calculate stats
+    // 🛡️ Do not calculate anything until StockContext has finished loading
+    if (loading) {
+        return (
+            <div className="p-8 text-center text-slate-500">
+                Loading dashboard...
+            </div>
+        )
+    }
+
+    // 🛡️ If operations is empty, prevent crashes
+    const safeOperations = Array.isArray(operations) ? operations : []
+
     const getOperationStats = (type) => {
-        const typeOps = operations.filter(op => op.type === type && op.status !== 'Cancelled')
-        const today = new Date().toISOString().split('T')[0]
+        const typeOps = safeOperations.filter(
+            op => op.type === type && op.status !== "Cancelled"
+        )
 
-        const readyCount = typeOps.filter(op => op.status === 'Ready').length
-        const waitingCount = typeOps.filter(op => op.status === 'Waiting').length
+        const today = new Date().toISOString().split("T")[0]
 
-        const activeOps = typeOps.filter(op => op.status !== 'Done')
+        const readyCount = typeOps.filter(op => op.status === "Ready").length
+        const waitingCount = typeOps.filter(op => op.status === "Waiting").length
+
+        const activeOps = typeOps.filter(op => op.status !== "Done")
+
         const lateCount = activeOps.filter(op => op.scheduledDate < today).length
         const upcomingCount = activeOps.filter(op => op.scheduledDate > today).length
 
         return { readyCount, waitingCount, lateCount, upcomingCount }
     }
 
-    const receiptStats = getOperationStats('RECEIPT')
-    const deliveryStats = getOperationStats('DELIVERY')
+    const receiptStats = getOperationStats("RECEIPT")
+    const deliveryStats = getOperationStats("DELIVERY")
 
     const handleNavigate = (tab) => {
         setActiveOperationTab(tab)
-        setCurrentView('operations')
+        setCurrentView("operations")
     }
 
     return (
@@ -40,17 +62,17 @@ export function DashboardView() {
             {/* Header */}
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div>
-                    <h1 className={cn("text-2xl font-bold tracking-tight", theme === 'dark' ? "text-white" : "text-slate-900")}>
+                    <h1 className={cn("text-2xl font-bold tracking-tight", theme === "dark" ? "text-white" : "text-slate-900")}>
                         Dashboard
                     </h1>
-                    <p className={cn("text-sm", theme === 'dark' ? "text-slate-400" : "text-slate-500")}>
+                    <p className={cn("text-sm", theme === "dark" ? "text-slate-400" : "text-slate-500")}>
                         Overview of your inventory performance.
                     </p>
                 </div>
                 <QuickActions />
             </div>
 
-            {/* Operations Summary Cards */}
+            {/* Operation Summary */}
             <div className="grid gap-6 md:grid-cols-2">
                 <OperationSummaryCard
                     title="Receipts"
@@ -60,7 +82,7 @@ export function DashboardView() {
                         { label: "Late", count: receiptStats.lateCount, isLate: true },
                         { label: "Operations", count: receiptStats.upcomingCount }
                     ]}
-                    onClick={() => handleNavigate('receipts')}
+                    onClick={() => handleNavigate("receipts")}
                 />
                 <OperationSummaryCard
                     title="Delivery Orders"
@@ -71,7 +93,7 @@ export function DashboardView() {
                         { label: "Waiting", count: deliveryStats.waitingCount },
                         { label: "Operations", count: deliveryStats.upcomingCount }
                     ]}
-                    onClick={() => handleNavigate('deliveries')}
+                    onClick={() => handleNavigate("deliveries")}
                 />
             </div>
 
@@ -106,7 +128,7 @@ export function DashboardView() {
                 />
             </div>
 
-            {/* Charts & Activity */}
+            {/* Charts & Recent Activity */}
             <div className="grid gap-6 md:grid-cols-7">
                 <div className="md:col-span-4 lg:col-span-5 space-y-6">
                     <InventoryChart />
