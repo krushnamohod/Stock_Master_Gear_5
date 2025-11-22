@@ -22,7 +22,7 @@
   "homepage": "https://github.com/krushnamohod/Stock_Master_Gear_5#readme",
   "dependencies": {
     "@prisma/adapter-pg": "^7.0.0",
-    "@prisma/client": "^7.0.0",
+    "@prisma/client": "^5.22.0",
     "@prisma/extension-accelerate": "^3.0.0",
     "bcryptjs": "^3.0.3",
     "cookie-parser": "^1.4.7",
@@ -32,10 +32,10 @@
     "express-rate-limit": "^8.2.1",
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.2",
-    "morgan": "^1.10.1"
+    "morgan": "^1.10.1",
+    "prisma": "^5.22.0"
   },
   "devDependencies": {
-    "nodemon": "^3.1.11",
-    "prisma": "^7.0.0"
+    "nodemon": "^3.1.11"
   }
 }

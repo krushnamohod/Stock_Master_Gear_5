@@ -1,16 +1,12 @@
-// prisma/schema.prisma
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
-  // Remove the url line completely
+  url      = env("DATABASE_URL")
 }
 
-/**
- * Enums
- */
 enum UserRole {
   MANAGER
   STAFF
@@ -45,10 +41,6 @@ enum LedgerType {
   MANUAL
 }
 
-/**
- * Models
- */
-
 model User {
   id        String   @id @default(uuid())
   name      String
@@ -81,25 +73,21 @@ model Warehouse {
 model Location {
   id          String    @id @default(uuid())
   name        String
-  code        String? // optional short code (e.g. BIN-A1)
+  code        String?
   warehouseId String
   warehouse   Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
-  // stock entries at this location
   stock Stock[]
 
-  // opposite relations (added)
-  receiptItems  ReceiptItem[] // opposite of ReceiptItem.location
-  deliveryItems DeliveryItem[] // opposite of DeliveryItem.location
-  adjustments   Adjustment[] // opposite of Adjustment.location
+  receiptItems  ReceiptItem[]
+  deliveryItems DeliveryItem[]
+  adjustments   Adjustment[]
 
-  // Transfers use explicit relation names on Transfer, so match them here:
   transfersFrom Transfer[] @relation("TransferFrom")
   transfersTo   Transfer[] @relation("TransferTo")
 
-  // unique index if you want unique names per warehouse
   @@unique([warehouseId, name], name: "warehouse_location_unique")
 }
 
@@ -107,7 +95,7 @@ model Product {
   id         String    @id @default(uuid())
   name       String
   sku        String    @unique
-  uom        String? // unit of measure (e.g. pcs, kg)
+  uom        String?
   categoryId String?
   category   Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   createdAt  DateTime  @default(now())
@@ -136,15 +124,12 @@ model Stock {
   @@index([productId], name: "idx_stock_product")
 }
 
-/**
- * Incoming receipts (purchase / supplier)
- */
 model Receipt {
   id          String        @id @default(uuid())
   supplier    String?
-  referenceNo String? // external reference / PO number
+  referenceNo String?
   status      ReceiptStatus @default(DRAFT)
-  createdById String? // optional user who created
+  createdById String?
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
 
@@ -155,7 +140,7 @@ model ReceiptItem {
   id         String  @id @default(uuid())
   receiptId  String
   productId  String
-  locationId String? // where items should be stocked; null = default/main location
+  locationId String?
   quantity   Int
 
   receipt  Receipt   @relation(fields: [receiptId], references: [id], onDelete: Cascade)
@@ -166,9 +151,6 @@ model ReceiptItem {
   @@index([productId], name: "idx_receipt_item_product")
 }
 
-/**
- * Outgoing deliveries (sales / customer)
- */
 model Delivery {
   id          String         @id @default(uuid())
   customer    String?
@@ -185,7 +167,7 @@ model DeliveryItem {
   id         String  @id @default(uuid())
   deliveryId String
   productId  String
-  locationId String? // which location the item will be taken from
+  locationId String?
   quantity   Int
 
   delivery Delivery  @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
@@ -196,9 +178,6 @@ model DeliveryItem {
   @@index([productId], name: "idx_delivery_item_product")
 }
 
-/**
- * Internal transfers (move between locations)
- */
 model Transfer {
   id             String         @id @default(uuid())
   fromLocationId String
@@ -228,9 +207,6 @@ model TransferItem {
   @@index([productId], name: "idx_transfer_item_product")
 }
 
-/**
- * Stock adjustments (count corrections, damage, etc.)
- */
 model Adjustment {
   id          String   @id @default(uuid())
   productId   String
@@ -245,15 +221,12 @@ model Adjustment {
   location Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
 }
 
-/**
- * Ledger: immutable history of quantity changes for products
- */
 model Ledger {
   id        String     @id @default(uuid())
   productId String
-  change    Int // positive for increment, negative for decrement
+  change    Int
   type      LedgerType
-  reference String? // e.g., receiptId, deliveryId, transferId, adjustmentId
+  reference String?
   note      String?
   createdAt DateTime   @default(now())
 
