@@ -1,5 +1,6 @@
 "use client"
 
+import { useAuth } from "@/context/AuthContext"
 import { useStock } from "@/context/StockContext"
 import { cn } from "@/lib/utils"
 import {
@@ -11,9 +12,10 @@ import {
     LayoutDashboard,
     LogOut,
     Moon,
-    Package, // Using FileText for History/Logs
+    Package,
     Settings,
-    Sun
+    Sun,
+    Users
 } from "lucide-react"
 import { useState } from "react"
 
@@ -39,6 +41,12 @@ const navItems = [
         icon: FileText,
     },
     {
+        title: "Staff Management",
+        id: "staff",
+        icon: Users,
+        adminOnly: true,
+    },
+    {
         title: "Settings",
         id: "settings",
         icon: Settings,
@@ -48,6 +56,15 @@ const navItems = [
 export function Sidebar() {
     const [isCollapsed, setIsCollapsed] = useState(false)
     const { currentView, setCurrentView, theme, toggleTheme } = useStock()
+    const { currentUser, logout } = useAuth()
+
+    // Filter nav items based on user role
+    const filteredNavItems = navItems.filter(item => {
+        if (item.adminOnly) {
+            return currentUser?.role === 'admin'
+        }
+        return true
+    })
 
     return (
         <aside
@@ -85,7 +102,7 @@ export function Sidebar() {
             </div>
 
             <nav className="flex-1 space-y-1 px-2 py-4">
-                {navItems.map((item) => {
+                {filteredNavItems.map((item) => {
                     const isActive = currentView === item.id
                     return (
                         <button
@@ -130,21 +147,25 @@ export function Sidebar() {
                     {!isCollapsed ? (
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                                <div className="h-8 w-8 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-500 font-bold">
-                                    JD
+                                <div className="h-8 w-8 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-500 font-bold text-xs">
+                                    {currentUser?.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U'}
                                 </div>
                                 <div className="flex flex-col text-left">
-                                    <span className="text-sm font-medium">John Doe</span>
-                                    <span className="text-xs opacity-70">Warehouse Mgr</span>
+                                    <span className="text-sm font-medium">{currentUser?.name || 'User'}</span>
+                                    <span className="text-xs opacity-70 capitalize">{currentUser?.role || 'Staff'}</span>
                                 </div>
                             </div>
-                            <button className="text-slate-400 hover:text-red-500">
+                            <button
+                                onClick={logout}
+                                className="text-slate-400 hover:text-red-500"
+                                title="Logout"
+                            >
                                 <LogOut className="h-4 w-4" />
                             </button>
                         </div>
                     ) : (
-                        <div className="mx-auto h-8 w-8 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-500 font-bold">
-                            JD
+                        <div className="mx-auto h-8 w-8 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-500 font-bold text-xs">
+                            {currentUser?.name?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U'}
                         </div>
                     )}
                 </div>

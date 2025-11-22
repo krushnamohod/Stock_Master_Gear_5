@@ -10,6 +10,7 @@ import { Sidebar } from "@/components/layout/Sidebar"
 import { OperationsView } from "@/components/operations/OperationsView"
 import { ProductsView } from "@/components/products/ProductsView"
 import { SettingsView } from "@/components/settings/SettingsView"
+import { StaffManagementView } from "@/components/staff/StaffManagementView"
 import { useAuth } from "@/context/AuthContext"
 import { useStock } from "@/context/StockContext"
 import { useState } from "react"
@@ -23,6 +24,7 @@ function MainLayout() {
             case 'products': return <ProductsView />
             case 'operations': return <OperationsView />
             case 'history': return <MoveHistoryView />
+            case 'staff': return <StaffManagementView />
             case 'settings': return <SettingsView />
             default: return <DashboardView />
         }
