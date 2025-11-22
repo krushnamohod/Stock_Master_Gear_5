@@ -1,14 +1,254 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
-  provider = "prisma-client"
-  output   = "../generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/*
+ * Enums
+ */
+enum UserRole {
+  MANAGER
+  STAFF
+}
+
+
+enum ReceiptStatus {
+  DRAFT
+  CONFIRMED
+  DONE
+  CANCELED
+}
+
+enum DeliveryStatus {
+  DRAFT
+  CONFIRMED
+  DONE
+  CANCELED
+}
+
+enum TransferStatus {
+  DRAFT
+  CONFIRMED
+  DONE
+  CANCELED
+}
+
+enum LedgerType {
+  RECEIPT
+  DELIVERY
+  TRANSFER
+  ADJUSTMENT
+  MANUAL
+}
+
+/*
+ * Models
+ */
+
+model User {
+  id         String   @id @default(uuid())
+  name       String
+  email      String   @unique
+  password   String
+  role       UserRole @default(STAFF)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+
+model Category {
+  id        String    @id @default(uuid())
+  name      String    @unique
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  products  Product[]
+}
+
+model Warehouse {
+  id        String    @id @default(uuid())
+  name      String    @unique
+  address   String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  locations Location[]
+}
+
+model Location {
+  id          String    @id @default(uuid())
+  name        String
+  code        String?             // optional short code (e.g. BIN-A1)
+  warehouseId String
+  warehouse   Warehouse   @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  stock       Stock[]
+  // unique index if you want unique names per warehouse
+  @@unique([warehouseId, name], name: "warehouse_location_unique")
+}
+
+model Product {
+  id         String    @id @default(uuid())
+  name       String
+  sku        String    @unique
+  uom        String?   // unit of measure (e.g. pcs, kg)
+  categoryId String? 
+  category   Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  stock          Stock[]
+  receiptItems   ReceiptItem[]
+  deliveryItems  DeliveryItem[]
+  transferItems  TransferItem[]
+  adjustments    Adjustment[]
+  ledgerEntries  Ledger[]
+}
+
+model Stock {
+  id         String   @id @default(uuid())
+  productId  String
+  locationId String
+  quantity   Int      @default(0)
+
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  location   Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  updatedAt  DateTime @updatedAt
+
+  @@unique([productId, locationId], name: "product_location_unique")
+  @@index([locationId], name: "idx_stock_location")
+  @@index([productId], name: "idx_stock_product")
+}
+
+/*
+ * Incoming receipts (purchase / supplier)
+ */
+model Receipt {
+  id          String        @id @default(uuid())
+  supplier    String?
+  referenceNo String?       // external reference / PO number
+  status      ReceiptStatus @default(DRAFT)
+  createdById String?       // optional user who created
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  items       ReceiptItem[]
+}
+
+model ReceiptItem {
+  id         String  @id @default(uuid())
+  receiptId  String
+  productId  String
+  locationId String? // where items should be stocked; null = default/main location
+  quantity   Int
+
+  receipt    Receipt @relation(fields: [receiptId], references: [id], onDelete: Cascade)
+  product    Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  location   Location? @relation(fields: [locationId], references: [id], onDelete: SetNull)
+
+  @@index([receiptId], name: "idx_receipt_item_receipt")
+  @@index([productId], name: "idx_receipt_item_product")
+}
+
+/*
+ * Outgoing deliveries (sales / customer)
+ */
+model Delivery {
+  id          String         @id @default(uuid())
+  customer    String?
+  referenceNo String?
+  status      DeliveryStatus @default(DRAFT)
+  createdById String?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  items       DeliveryItem[]
+}
+
+model DeliveryItem {
+  id         String  @id @default(uuid())
+  deliveryId String
+  productId  String
+  locationId String? // which location the item will be taken from
+  quantity   Int
+
+  delivery   Delivery @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  location   Location? @relation(fields: [locationId], references: [id], onDelete: SetNull)
+
+  @@index([deliveryId], name: "idx_delivery_item_delivery")
+  @@index([productId], name: "idx_delivery_item_product")
+}
+
+/*
+ * Internal transfers (move between locations)
+ */
+model Transfer {
+  id          String         @id @default(uuid())
+  fromLocationId String
+  toLocationId   String
+  referenceNo    String?
+  status         TransferStatus @default(DRAFT)
+  createdById    String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  fromLocation   Location @relation("TransferFrom", fields: [fromLocationId], references: [id], onDelete: Cascade)
+  toLocation     Location @relation("TransferTo", fields: [toLocationId], references: [id], onDelete: Cascade)
+
+  items         TransferItem[]
+}
+
+model TransferItem {
+  id         String   @id @default(uuid())
+  transferId String
+  productId  String
+  quantity   Int
+
+  transfer   Transfer @relation(fields: [transferId], references: [id], onDelete: Cascade)
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([transferId], name: "idx_transfer_item_transfer")
+  @@index([productId], name: "idx_transfer_item_product")
+}
+
+/*
+ * Stock adjustments (count corrections, damage, etc.)
+ */
+model Adjustment {
+  id          String   @id @default(uuid())
+  productId   String
+  locationId  String
+  oldQuantity Int
+  newQuantity Int
+  reason      String?
+  createdById String?
+  createdAt   DateTime @default(now())
+
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  location  Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+}
+
+/*
+ * Ledger: immutable history of quantity changes for products
+ */
+model Ledger {
+  id         String     @id @default(uuid())
+  productId  String
+  change     Int        // positive for increment, negative for decrement
+  type       LedgerType
+  reference  String?    // e.g., receiptId, deliveryId, transferId, adjustmentId
+  note       String?
+  createdAt  DateTime   @default(now())
+
+  product    Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId], name: "idx_ledger_product")
+  @@index([createdAt], name: "idx_ledger_createdAt")
 }
