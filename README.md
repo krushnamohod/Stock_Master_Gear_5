@@ -405,9 +405,9 @@ For support, email priyanshuthakare10@gmail.com or open an issue in the GitHub r
 
 ## 👥 Authors
 
-- **Priyanshu Thakare** - *Initial work* - [YourGitHub](https://github.com/priyaannsshhu)
-- **Priyanshu Thakare** - *Initial work* - [YourGitHub](https://github.com/priyaannsshhu)
-- **Priyanshu Thakare** - *Initial work* - [YourGitHub](https://github.com/priyaannsshhu)
+- **Krushna Mohod** - *Initial work* - [Krushnamohod](https://github.com/krushnamohod)
+- **Lokesh Chaudhary** - *Initial work* - [lokidass](https://github.com/lokidass)
+- **Priyanshu Thakare** - *Initial work* - [YourGitHub](https://github.com/priyanshuthakare)
 
 ---
 
