@@ -1,5 +1,8 @@
 "use client"
 
+import { ForgetPasswordScreen } from "@/components/auth/ForgetPasswordScreen"
+import { LoginScreen } from "@/components/auth/LoginScreen"
+import { SignUpScreen } from "@/components/auth/SignUpScreen"
 import { DashboardView } from "@/components/dashboard/DashboardView"
 import { MoveHistoryView } from "@/components/history/MoveHistoryView"
 import { Header } from "@/components/layout/Header"
@@ -7,7 +10,9 @@ import { Sidebar } from "@/components/layout/Sidebar"
 import { OperationsView } from "@/components/operations/OperationsView"
 import { ProductsView } from "@/components/products/ProductsView"
 import { SettingsView } from "@/components/settings/SettingsView"
+import { AuthProvider, useAuth } from "@/context/AuthContext"
 import { StockProvider, useStock } from "@/context/StockContext"
+import { useState } from "react"
 
 function MainLayout() {
     const { currentView, theme } = useStock()
@@ -36,10 +41,38 @@ function MainLayout() {
     )
 }
 
-export default function Home() {
+function AppContent() {
+    const { isAuthenticated } = useAuth()
+    const [authView, setAuthView] = useState('login') // 'login', 'signup', 'forgot'
+
+    if (!isAuthenticated) {
+        if (authView === 'signup') {
+            return <SignUpScreen onSwitchToLogin={() => setAuthView('login')} />
+        }
+        if (authView === 'forgot') {
+            return <ForgetPasswordScreen onBackToLogin={() => setAuthView('login')} />
+        }
+        return (
+            <LoginScreen
+                onSwitchToSignUp={() => setAuthView('signup')}
+                onForgetPassword={() => setAuthView('forgot')}
+            />
+        )
+    }
+
     return (
         <StockProvider>
             <MainLayout />
         </StockProvider>
+    )
+}
+
+export default function Home() {
+    return (
+        <AuthProvider>
+            <StockProvider>
+                <AppContent />
+            </StockProvider>
+        </AuthProvider>
     )
 }
