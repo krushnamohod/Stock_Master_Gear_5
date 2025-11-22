@@ -253,24 +253,30 @@ docker-compose down
 
 ---
 
+# StockMaster
+
+... (markdown truncated for brevity in this canvas)
+
 ## 📖 Documentation
 
 ### 📚 Complete Documentation
 
 For comprehensive documentation including API references, database schema, workflows, and architecture diagrams, see:
 
-**➡️ [FULL DOCUMENTATION](DOCUMENTATION.md)**
+**➡️ [FULL DOCUMENTATION](https://docs.google.com/document/d/1_HbrVhHvwr8g4P11MiZ0lYKgxAyB8D8JEhhrywyIG9s/edit?usp=sharing)**
 
 ### Quick Links
 
-| Documentation Section | Description |
-|----------------------|-------------|
-| [🏗️ System Architecture](DOCUMENTATION.md#system-architecture) | Three-tier architecture breakdown |
-| [🗄️ Database Schema](DOCUMENTATION.md#database-schema) | Complete data model and relationships |
-| [🔌 API Reference](DOCUMENTATION.md#api-documentation) | All endpoints with examples |
-| [📊 Dashboard Guide](DOCUMENTATION.md#dashboard-features) | Dashboard features and KPIs |
-| [🔄 Workflow Examples](DOCUMENTATION.md#workflow-examples) | Real-world usage scenarios |
-| [🚀 Deployment Guide](DOCUMENTATION.md#deployment) | Production deployment steps |
+| Documentation Section                                                                                                       | Description                           |
+| --------------------------------------------------------------------------------------------------------------------------- | ------------------------------------- |
+| [🏗️ System Architecture](https://docs.google.com/document/d/1_HbrVhHvwr8g4P11MiZ0lYKgxAyB8D8JEhhrywyIG9s/edit?usp=sharing) | Three-tier architecture breakdown     |
+| [🗄️ Database Schema](https://docs.google.com/document/d/1_HbrVhHvwr8g4P11MiZ0lYKgxAyB8D8JEhhrywyIG9s/edit?usp=sharing)     | Complete data model and relationships |
+| [🔌 API Reference](https://docs.google.com/document/d/1_HbrVhHvwr8g4P11MiZ0lYKgxAyB8D8JEhhrywyIG9s/edit?usp=sharing)        | All endpoints with examples           |
+| [📊 Dashboard Guide](https://docs.google.com/document/d/1_HbrVhHvwr8g4P11MiZ0lYKgxAyB8D8JEhhrywyIG9s/edit?usp=sharing)      | Dashboard features and KPIs           |
+| [🔄 Workflow Examples](https://docs.google.com/document/d/1_HbrVhHvwr8g4P11MiZ0lYKgxAyB8D8JEhhrywyIG9s/edit?usp=sharing)    | Real-world usage scenarios            |
+| [🚀 Deployment Guide](https://docs.google.com/document/d/1_HbrVhHvwr8g4P11MiZ0lYKgxAyB8D8JEhhrywyIG9s/edit?usp=sharing)     | Production deployment steps           |
+
+... (rest of file continues)
 
 ---
 
