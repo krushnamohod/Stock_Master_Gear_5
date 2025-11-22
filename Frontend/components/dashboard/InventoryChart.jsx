@@ -7,21 +7,19 @@ import { BarChart3 } from "lucide-react"
 export function InventoryChart() {
     const { products, categories, theme } = useStock()
 
-    // Calculate total stock value per category
+    // Calculate total stock items per category
     const categoryData = categories.map(category => {
         const categoryProducts = products.filter(p => p.category === category.name)
-        const totalValue = categoryProducts.reduce((sum, p) => sum + (p.totalStock * p.price), 0)
         const totalItems = categoryProducts.reduce((sum, p) => sum + p.totalStock, 0)
         return {
             name: category.name,
-            value: totalValue,
             items: totalItems,
             products: categoryProducts.length
         }
     })
 
     // Find max value for scaling
-    const maxValue = Math.max(...categoryData.map(d => d.value), 1)
+    const maxItems = Math.max(...categoryData.map(d => d.items), 1)
     const chartHeight = 300 // Height of chart area in pixels
 
     // Solid colors for bars
@@ -48,10 +46,10 @@ export function InventoryChart() {
                     </div>
                     <div>
                         <h3 className={cn("text-lg font-semibold", theme === 'dark' ? 'text-white' : 'text-slate-900')}>
-                            Inventory Value by Category
+                            Stock Quantity by Category
                         </h3>
                         <p className={cn("text-sm", theme === 'dark' ? 'text-slate-400' : 'text-slate-500')}>
-                            Stock distribution histogram
+                            Item distribution histogram
                         </p>
                     </div>
                 </div>
@@ -61,10 +59,10 @@ export function InventoryChart() {
             <div className="relative" style={{ height: `${chartHeight + 60}px` }}>
                 {/* Y-axis labels */}
                 <div className="absolute left-0 top-0 bottom-12 w-20 flex flex-col justify-between">
-                    {[maxValue, maxValue * 0.75, maxValue * 0.5, maxValue * 0.25, 0].map((value, index) => (
+                    {[maxItems, maxItems * 0.75, maxItems * 0.5, maxItems * 0.25, 0].map((value, index) => (
                         <div key={index} className="text-right pr-2">
                             <span className={cn("text-xs font-mono", theme === 'dark' ? 'text-slate-400' : 'text-slate-600')}>
-                                ${Math.round(value).toLocaleString()}
+                                {Math.round(value).toLocaleString()}
                             </span>
                         </div>
                     ))}
@@ -88,7 +86,7 @@ export function InventoryChart() {
                     {/* Bars */}
                     <div className="absolute inset-0 flex items-end justify-around gap-4 px-4">
                         {categoryData.map((category, index) => {
-                            const barHeight = (category.value / maxValue) * chartHeight
+                            const barHeight = (category.items / maxItems) * chartHeight
                             const color = colors[index % colors.length]
 
                             return (
@@ -101,7 +99,7 @@ export function InventoryChart() {
                                         "mb-2 text-xs font-semibold opacity-0 group-hover:opacity-100 transition-opacity",
                                         color.text
                                     )}>
-                                        ${category.value.toLocaleString()}
+                                        {category.items.toLocaleString()} items
                                     </div>
 
                                     {/* Bar */}
@@ -162,18 +160,18 @@ export function InventoryChart() {
             )}>
                 <div className="text-center">
                     <p className={cn("text-xs uppercase tracking-wide mb-1", theme === 'dark' ? 'text-slate-500' : 'text-slate-500')}>
-                        Total Value
-                    </p>
-                    <p className={cn("text-lg font-bold", theme === 'dark' ? 'text-white' : 'text-slate-900')}>
-                        ${categoryData.reduce((sum, d) => sum + d.value, 0).toLocaleString()}
-                    </p>
-                </div>
-                <div className="text-center">
-                    <p className={cn("text-xs uppercase tracking-wide mb-1", theme === 'dark' ? 'text-slate-500' : 'text-slate-500')}>
                         Total Items
                     </p>
                     <p className={cn("text-lg font-bold", theme === 'dark' ? 'text-white' : 'text-slate-900')}>
                         {categoryData.reduce((sum, d) => sum + d.items, 0).toLocaleString()}
+                    </p>
+                </div>
+                <div className="text-center">
+                    <p className={cn("text-xs uppercase tracking-wide mb-1", theme === 'dark' ? 'text-slate-500' : 'text-slate-500')}>
+                        Total Products
+                    </p>
+                    <p className={cn("text-lg font-bold", theme === 'dark' ? 'text-white' : 'text-slate-900')}>
+                        {categoryData.reduce((sum, d) => sum + d.products, 0).toLocaleString()}
                     </p>
                 </div>
                 <div className="text-center">

@@ -2,151 +2,192 @@
 
 import { useStock } from "@/context/StockContext"
 import { cn } from "@/lib/utils"
-import { ArrowDownLeft, ArrowUpRight, CheckCircle, RefreshCw } from "lucide-react"
+import { ArrowRightLeft, ClipboardCheck, Kanban, LayoutList, PackageMinus, PackagePlus, Plus, Search } from "lucide-react"
 import { useState } from "react"
+import { AdjustmentsListView } from "./AdjustmentsListView"
+import { DeliveriesKanbanView } from "./DeliveriesKanbanView"
+import { DeliveriesListView } from "./DeliveriesListView"
+import { OperationFormModal } from "./OperationFormModal"
+import { ReceiptsKanbanView } from "./ReceiptsKanbanView"
+import { ReceiptsListView } from "./ReceiptsListView"
+import { TransfersListView } from "./TransfersListView"
 
 export function OperationsView() {
-    const { products, addMovement, theme } = useStock()
-    const [activeTab, setActiveTab] = useState('receipts')
-    const [formData, setFormData] = useState({
-        productId: "",
-        quantity: "",
-        reference: ""
-    })
-    const [successMsg, setSuccessMsg] = useState("")
+    const { theme, activeOperationTab, setActiveOperationTab } = useStock()
+    const [viewMode, setViewMode] = useState('list')
+    const [searchTerm, setSearchTerm] = useState("")
 
-    const handleSubmit = (e) => {
-        e.preventDefault()
-        if (!formData.productId || !formData.quantity) return
+    // Modal State
+    const [isModalOpen, setIsModalOpen] = useState(false)
+    const [selectedOperation, setSelectedOperation] = useState(null)
+    const [modalType, setModalType] = useState('RECEIPT')
 
-        const type = activeTab === 'receipts' ? 'IN' : activeTab === 'deliveries' ? 'OUT' : 'ADJ'
+    const handleNewOperation = () => {
+        setSelectedOperation(null)
+        let type = 'RECEIPT'
+        if (activeOperationTab === 'deliveries') type = 'DELIVERY'
+        else if (activeOperationTab === 'transfers') type = 'TRANSFER'
+        else if (activeOperationTab === 'adjustments') type = 'ADJUSTMENT'
 
-        addMovement({
-            type,
-            productId: formData.productId,
-            quantity: parseInt(formData.quantity),
-            reference: formData.reference || `AUTO-${Date.now().toString().slice(-6)}`
-        })
-
-        setSuccessMsg(`${type === 'IN' ? 'Receipt' : type === 'OUT' ? 'Delivery' : 'Adjustment'} processed successfully!`)
-        setFormData({ productId: "", quantity: "", reference: "" })
-
-        setTimeout(() => setSuccessMsg(""), 3000)
+        setModalType(type)
+        setIsModalOpen(true)
     }
 
+    const handleOperationClick = (operation) => {
+        setSelectedOperation(operation)
+        setModalType(operation.type)
+        setIsModalOpen(true)
+    }
+
+    const tabs = [
+        { id: 'receipts', label: 'Receipts', icon: PackagePlus, description: 'Incoming stock' },
+        { id: 'deliveries', label: 'Deliveries', icon: PackageMinus, description: 'Outgoing stock' },
+        { id: 'transfers', label: 'Internal Transfers', icon: ArrowRightLeft, description: 'Move stock' },
+        { id: 'adjustments', label: 'Stock Adjustments', icon: ClipboardCheck, description: 'Stock corrections' }
+    ]
+
     return (
-        <div className="space-y-6 max-w-2xl mx-auto">
-            <div className="text-center">
-                <h1 className={cn("text-2xl font-bold tracking-tight", theme === 'dark' ? "text-white" : "text-slate-900")}>Operations Center</h1>
-                <p className={cn("text-sm", theme === 'dark' ? "text-slate-400" : "text-slate-500")}>Manage incoming and outgoing stock movements.</p>
+        <div className="space-y-6">
+            {/* Header */}
+            <div>
+                <h1 className={cn("text-2xl font-bold tracking-tight", theme === 'dark' ? "text-white" : "text-slate-900")}>
+                    Operations
+                </h1>
+                <p className={cn("text-sm mt-1", theme === 'dark' ? "text-slate-400" : "text-slate-500")}>
+                    Manage inventory movements and transactions
+                </p>
             </div>
 
-            {/* Tabs */}
-            <div className="flex rounded-lg bg-slate-100 p-1 dark:bg-slate-800">
-                <button
-                    onClick={() => setActiveTab('receipts')}
-                    className={cn(
-                        "flex-1 flex items-center justify-center gap-2 rounded-md py-2 text-sm font-medium transition-all",
-                        activeTab === 'receipts'
-                            ? "bg-white text-blue-600 shadow-sm dark:bg-slate-700 dark:text-blue-400"
-                            : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
-                    )}
-                >
-                    <ArrowDownLeft className="h-4 w-4" />
-                    Receipts (In)
-                </button>
-                <button
-                    onClick={() => setActiveTab('deliveries')}
-                    className={cn(
-                        "flex-1 flex items-center justify-center gap-2 rounded-md py-2 text-sm font-medium transition-all",
-                        activeTab === 'deliveries'
-                            ? "bg-white text-blue-600 shadow-sm dark:bg-slate-700 dark:text-blue-400"
-                            : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
-                    )}
-                >
-                    <ArrowUpRight className="h-4 w-4" />
-                    Deliveries (Out)
-                </button>
-                <button
-                    onClick={() => setActiveTab('adjustments')}
-                    className={cn(
-                        "flex-1 flex items-center justify-center gap-2 rounded-md py-2 text-sm font-medium transition-all",
-                        activeTab === 'adjustments'
-                            ? "bg-white text-blue-600 shadow-sm dark:bg-slate-700 dark:text-blue-400"
-                            : "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
-                    )}
-                >
-                    <RefreshCw className="h-4 w-4" />
-                    Adjustments
-                </button>
-            </div>
-
-            {/* Form */}
+            {/* Tab Navigation */}
             <div className={cn(
-                "rounded-xl border p-6 shadow-sm",
-                theme === 'dark' ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200"
+                "border-b",
+                theme === 'dark' ? 'border-slate-800' : 'border-slate-200'
             )}>
-                <h2 className={cn("text-lg font-semibold mb-4", theme === 'dark' ? "text-white" : "text-slate-900")}>
-                    {activeTab === 'receipts' ? "New Stock Receipt" : activeTab === 'deliveries' ? "New Delivery Order" : "Inventory Adjustment"}
-                </h2>
+                <div className="flex gap-8 overflow-x-auto">
+                    {tabs.map(tab => {
+                        const Icon = tab.icon
+                        const isActive = activeOperationTab === tab.id
+                        return (
+                            <button
+                                key={tab.id}
+                                onClick={() => setActiveOperationTab(tab.id)}
+                                className={cn(
+                                    "flex items-center gap-2 pb-4 border-b-2 transition-colors group whitespace-nowrap",
+                                    isActive
+                                        ? "border-blue-600 text-blue-600 dark:text-blue-400"
+                                        : "border-transparent hover:border-slate-300 dark:hover:border-slate-600",
+                                    theme === 'dark' ? 'text-slate-400 hover:text-slate-300' : 'text-slate-600 hover:text-slate-900'
+                                )}
+                            >
+                                <Icon className={cn(
+                                    "h-5 w-5",
+                                    isActive && "text-blue-600 dark:text-blue-400"
+                                )} />
+                                <div className="text-left">
+                                    <div className={cn(
+                                        "font-semibold text-sm",
+                                        isActive && "text-blue-600 dark:text-blue-400"
+                                    )}>
+                                        {tab.label}
+                                    </div>
+                                    <div className={cn(
+                                        "text-xs",
+                                        theme === 'dark' ? 'text-slate-500' : 'text-slate-400'
+                                    )}>
+                                        {tab.description}
+                                    </div>
+                                </div>
+                            </button>
+                        )
+                    })}
+                </div>
+            </div>
 
-                {successMsg && (
-                    <div className="mb-4 p-3 rounded-md bg-green-50 text-green-700 flex items-center gap-2 text-sm dark:bg-green-900/30 dark:text-green-400">
-                        <CheckCircle className="h-4 w-4" />
-                        {successMsg}
+            {/* Search & Actions Bar */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                {/* Search */}
+                <div className="relative flex-1 max-w-sm">
+                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
+                    <input
+                        type="text"
+                        placeholder="Search by reference..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className={cn(
+                            "h-9 w-full rounded-md border pl-9 pr-4 text-sm outline-none focus:ring-2 focus:ring-blue-500",
+                            theme === 'dark'
+                                ? "bg-slate-900 border-slate-700 text-slate-200"
+                                : "bg-white border-slate-200 text-slate-900"
+                        )}
+                    />
+                </div>
+
+                {/* View Switcher */}
+                {activeOperationTab !== 'adjustments' && activeOperationTab !== 'transfers' && (
+                    <div className={cn(
+                        "flex items-center p-1 rounded-lg border",
+                        theme === 'dark' ? "bg-slate-900 border-slate-700" : "bg-white border-slate-200"
+                    )}>
+                        <button
+                            onClick={() => setViewMode('list')}
+                            className={cn(
+                                "p-1.5 rounded-md transition-colors",
+                                viewMode === 'list'
+                                    ? (theme === 'dark' ? "bg-slate-800 text-white" : "bg-slate-100 text-slate-900")
+                                    : "text-slate-400 hover:text-slate-600"
+                            )}
+                        >
+                            <LayoutList className="h-4 w-4" />
+                        </button>
+                        <button
+                            onClick={() => setViewMode('kanban')}
+                            className={cn(
+                                "p-1.5 rounded-md transition-colors",
+                                viewMode === 'kanban'
+                                    ? (theme === 'dark' ? "bg-slate-800 text-white" : "bg-slate-100 text-slate-900")
+                                    : "text-slate-400 hover:text-slate-600"
+                            )}
+                        >
+                            <Kanban className="h-4 w-4" />
+                        </button>
                     </div>
                 )}
 
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    <div>
-                        <label className={cn("block text-sm font-medium mb-1", theme === 'dark' ? "text-slate-300" : "text-slate-700")}>Select Product</label>
-                        <select
-                            required
-                            className={cn("w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-1", theme === 'dark' ? "bg-slate-800 border-slate-700 text-white focus:ring-blue-500" : "border-slate-300 focus:ring-blue-500")}
-                            value={formData.productId}
-                            onChange={e => setFormData({ ...formData, productId: e.target.value })}
-                        >
-                            <option value="">-- Choose Product --</option>
-                            {products.map(p => (
-                                <option key={p.id} value={p.id}>{p.name} (Current: {p.stock})</option>
-                            ))}
-                        </select>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className={cn("block text-sm font-medium mb-1", theme === 'dark' ? "text-slate-300" : "text-slate-700")}>Quantity</label>
-                            <input
-                                required
-                                type="number"
-                                min="1"
-                                className={cn("w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-1", theme === 'dark' ? "bg-slate-800 border-slate-700 text-white focus:ring-blue-500" : "border-slate-300 focus:ring-blue-500")}
-                                value={formData.quantity}
-                                onChange={e => setFormData({ ...formData, quantity: e.target.value })}
-                            />
-                        </div>
-                        <div>
-                            <label className={cn("block text-sm font-medium mb-1", theme === 'dark' ? "text-slate-300" : "text-slate-700")}>Reference #</label>
-                            <input
-                                type="text"
-                                placeholder="Optional (PO/Order ID)"
-                                className={cn("w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-1", theme === 'dark' ? "bg-slate-800 border-slate-700 text-white focus:ring-blue-500" : "border-slate-300 focus:ring-blue-500")}
-                                value={formData.reference}
-                                onChange={e => setFormData({ ...formData, reference: e.target.value })}
-                            />
-                        </div>
-                    </div>
-
-                    <div className="pt-4">
-                        <button
-                            type="submit"
-                            className="w-full py-2.5 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors shadow-sm"
-                        >
-                            {activeTab === 'receipts' ? "Receive Stock" : activeTab === 'deliveries' ? "Process Delivery" : "Update Stock Level"}
-                        </button>
-                    </div>
-                </form>
+                {/* New Operation Button */}
+                <button
+                    onClick={handleNewOperation}
+                    className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 shadow-sm transition-colors"
+                >
+                    <Plus className="h-4 w-4" />
+                    New {tabs.find(t => t.id === activeOperationTab)?.label.replace('Internal ', '').replace('Stock ', '')}
+                </button>
             </div>
+
+            {/* Tab Content */}
+            {activeOperationTab === 'receipts' && (
+                viewMode === 'list'
+                    ? <ReceiptsListView searchTerm={searchTerm} onOperationClick={handleOperationClick} />
+                    : <ReceiptsKanbanView searchTerm={searchTerm} onOperationClick={handleOperationClick} />
+            )}
+            {activeOperationTab === 'deliveries' && (
+                viewMode === 'list'
+                    ? <DeliveriesListView searchTerm={searchTerm} onOperationClick={handleOperationClick} />
+                    : <DeliveriesKanbanView searchTerm={searchTerm} onOperationClick={handleOperationClick} />
+            )}
+            {activeOperationTab === 'transfers' && (
+                <TransfersListView searchTerm={searchTerm} onOperationClick={handleOperationClick} />
+            )}
+            {activeOperationTab === 'adjustments' && (
+                <AdjustmentsListView searchTerm={searchTerm} onOperationClick={handleOperationClick} />
+            )}
+
+            {/* Modal */}
+            <OperationFormModal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                operation={selectedOperation}
+                type={modalType}
+            />
         </div>
     )
 }
