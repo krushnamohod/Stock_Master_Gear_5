@@ -1,5 +1,6 @@
 "use client"
 
+import { InventoryChart } from "@/components/dashboard/InventoryChart"
 import { KPICard } from "@/components/dashboard/KPICard"
 import { QuickActions } from "@/components/dashboard/QuickActions"
 import { RecentActivity } from "@/components/dashboard/RecentActivity"
@@ -56,13 +57,7 @@ export function DashboardView() {
 
             <div className="grid gap-6 md:grid-cols-7">
                 <div className="md:col-span-4 lg:col-span-5 space-y-6">
-                    {/* Placeholder for a chart or main widget */}
-                    <div className={cn(
-                        "rounded-xl border p-6 shadow-sm min-h-[300px] flex items-center justify-center",
-                        theme === 'dark' ? "bg-slate-900 border-slate-800 text-slate-500" : "bg-white border-slate-200 text-slate-400"
-                    )}>
-                        Inventory Value Trend Chart Placeholder
-                    </div>
+                    <InventoryChart />
                 </div>
                 <div className="md:col-span-3 lg:col-span-2">
                     <RecentActivity />
