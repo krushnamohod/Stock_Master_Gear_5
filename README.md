@@ -111,7 +111,7 @@ Before you begin, ensure you have the following installed:
 ### Step 1: Clone the Repository
 
 ```bash
-git clone https://github.com/yourusername/Stock_Master_Gear_5.git
+git clone https://github.com/krushnamohod/Stock_Master_Gear_5.git
 cd Stock_Master_Gear_5/Frontend
 ```
 
@@ -129,12 +129,25 @@ yarn install
 
 ### Step 3: Environment Setup
 
-Create a `.env.local` file in the `Frontend` directory (optional for future API integration):
+Create a `.env` file in the `Root` directory (optional for future API integration):
 
 ```env
-# Future API Configuration
-NEXT_PUBLIC_API_URL=http://localhost:3001
-NEXT_PUBLIC_APP_NAME=StockMaster
+DATABASE_URL="postgresql://neondb_owner:REDACTED@ep-jolly-lake-a1lslxh2-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
+# DATABASE_URL_UNPOOLED="postgresql://neondb_owner:REDACTED@ep-jolly-lake-a1lslxh2.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
+
+```
+
+Create a `.env.loacal` file in the `Root` directory (optional for future API integration):
+```env
+DATABASE_URL="postgresql://neondb_owner:npg_qOA6auiHUZr7@ep-jolly-lake-a1lslxh2-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
+JWT_SECRET="replace_with_a_long_secret"
+JWT_EXP="7d"
+DEFAULT_MANAGER_EMAIL="manager@stockmaster.local"
+DEFAULT_MANAGER_PASS="manager123"
+DEFAULT_STAFF_EMAIL="staff@stockmaster.local"
+DEFAULT_STAFF_PASS="staff123"
+PORT=4000
+
 ```
 
 ### Step 4: Run Development Server
@@ -171,8 +184,8 @@ yarn start
 ## 🔑 Default Credentials
 
 ### Admin Account
-- **Login ID:** `admin123`
-- **Password:** `Password@123`
+- **Login ID:** `admin@odoo.com`
+- **Password:** `admin123`
 - **Role:** Admin (Full Access)
 
 > ⚠️ **Important:** Change these credentials in production by updating `Frontend/context/AuthContext.js`
@@ -290,6 +303,7 @@ Frontend/
 │   ├── layout.js          # Root layout with providers
 │   ├── page.js            # Main application entry
 │   └── globals.css        # Global styles
+│   └── favicon.ico        # favicon
 ├── components/
 │   ├── auth/              # Authentication components
 │   │   ├── LoginScreen.jsx
@@ -299,6 +313,9 @@ Frontend/
 │   │   ├── DashboardView.jsx
 │   │   ├── KPICard.jsx
 │   │   └── OperationSummaryCard.jsx
+│   │   └── InventoryChart.jsx
+│   │   └── QuickActions.jsx
+│   │   └── RecentActivity.jsx
 │   ├── layout/            # Layout components
 │   │   ├── Header.jsx
 │   │   └── Sidebar.jsx
