@@ -1,193 +1,86 @@
 "use client"
 
-import { createContext, useContext, useState, useEffect } from "react"
+import { createContext, useContext, useEffect, useState } from 'react'
 
 const AuthContext = createContext()
 
 export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null)
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [loading, setLoading] = useState(true)
 
-  const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api/v1"
-
-  // ---------------------------
-  // Client-side validation helpers (kept from your original)
-  // ---------------------------
-  const validateLoginId = (loginId) => {
-    if (!loginId) return "Login ID required"
-    if (loginId.length < 6 || loginId.length > 12) {
-      return "Login ID must be 6-12 characters"
-    }
-    return null
-  }
-
-  const validateEmail = (email) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!email) return "Email required"
-    if (!emailRegex.test(email)) {
-      return "Invalid email format"
-    }
-    return null
-  }
-
-  const validatePassword = (password) => {
-    if (!password) return "Password required"
-    if (password.length <= 8) {
-      return "Password must be greater than 8 characters"
-    }
-    if (!/[a-z]/.test(password)) {
-      return "Password must contain at least one lowercase letter"
-    }
-    if (!/[A-Z]/.test(password)) {
-      return "Password must contain at least one uppercase letter"
-    }
-    if (!/[!@#$%^&*(),.?\":{}|<>]/.test(password)) {
-      return "Password must contain at least one special character"
-    }
-    return null
-  }
-
-  // NOTE: Backend currently has no /auth/check endpoints.
-  // These functions are optimistic (client-side). To make them authoritative,
-  // add endpoints like GET /api/v1/auth/check-email?email=... and /auth/check-login?loginId=...
-  const isLoginIdUnique = async (loginId) => {
-    // optimistic client-side check (format only)
-    const err = validateLoginId(loginId)
-    if (err) return false
-    return true
-  }
-
-  const isEmailUnique = async (email) => {
-    // optimistic client-side check (format only)
-    const err = validateEmail(email)
-    if (err) return false
-    return true
-  }
-
-  // ---------------------------
-  // Load user if token exists
-  // ---------------------------
   useEffect(() => {
-    const load = async () => {
-      const token = localStorage.getItem("token")
-      if (!token) {
-        setLoading(false)
-        return
-      }
-
+    // Check for stored user on mount
+    const storedUser = localStorage.getItem('stockmaster_user')
+    if (storedUser) {
       try {
-        const res = await fetch(`${API_BASE}/auth/me`, {
-          headers: { Authorization: `Bearer ${token}` }
-        })
-        if (!res.ok) {
-          localStorage.removeItem("token")
-          setLoading(false)
-          return
-        }
-        const data = await res.json()
-        setCurrentUser(data)
-        setIsAuthenticated(true)
-      } catch (err) {
-        localStorage.removeItem("token")
-      } finally {
-        setLoading(false)
+        setCurrentUser(JSON.parse(storedUser))
+      } catch (e) {
+        console.error("Failed to parse stored user", e)
+        localStorage.removeItem('stockmaster_user')
       }
     }
-
-    load()
+    setLoading(false)
   }, [])
 
-  // ---------------------------
-  // LOGIN (expects email)
-  // ---------------------------
-  const login = async (email, password) => {
-    try {
-      const res = await fetch(`${API_BASE}/auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password })
-      })
+  const login = async (loginId, password) => {
+    // Mock login logic
+    // In a real app, this would call an API
+    // For demo purposes, accept any non-empty credentials
+    if (loginId && password) {
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 500))
 
-      const data = await res.json()
-
-      if (!res.ok) {
-        return { success: false, error: data.message || "Login failed" }
+      const user = {
+        id: '1',
+        loginId: loginId,
+        name: loginId.split('@')[0] || 'Admin User',
+        role: 'admin',
+        email: loginId.includes('@') ? loginId : `${loginId}@example.com`
       }
 
-      localStorage.setItem("token", data.token)
-      setCurrentUser(data.user)
-      setIsAuthenticated(true)
-
+      setCurrentUser(user)
+      localStorage.setItem('stockmaster_user', JSON.stringify(user))
       return { success: true }
-    } catch (err) {
-      return { success: false, error: "Network error. Try again." }
     }
+    return { success: false, error: 'Invalid credentials' }
   }
 
-  // ---------------------------
-  // SIGNUP -> call backend register
-  // We map `loginId` -> `name` when calling backend (backend expects name,email,password)
-  // ---------------------------
-const signup = async (loginId, email, password) => {
-  try {
-    const loginErr = validateLoginId(loginId)
-    if (loginErr) return { success: false, error: loginErr }
-
-    const emailErr = validateEmail(email)
-    if (emailErr) return { success: false, error: emailErr }
-
-    const passErr = validatePassword(password)
-    if (passErr) return { success: false, error: passErr }
-
-    const res = await fetch(`${API_BASE}/auth/register`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: loginId, email, password })
-    })
-
-    const data = await res.json()
-
-    if (!res.ok) {
-      return { success: false, error: data.message || "Signup failed" }
-    }
-
-    // DO NOT auto-login
-    return { success: true }
-
-  } catch (err) {
-    return { success: false, error: "Network error. Try again." }
-  }
-}
-
-
-  // ---------------------------
-  // LOGOUT
-  // ---------------------------
   const logout = () => {
-    localStorage.removeItem("token")
     setCurrentUser(null)
-    setIsAuthenticated(false)
+    localStorage.removeItem('stockmaster_user')
+  }
+
+  const signup = async (userData) => {
+    // Mock signup
+    await new Promise(resolve => setTimeout(resolve, 500))
+
+    const user = {
+      id: Date.now().toString(),
+      ...userData,
+      role: 'user'
+    }
+
+    setCurrentUser(user)
+    localStorage.setItem('stockmaster_user', JSON.stringify(user))
+    return { success: true }
+  }
+
+  const resetPassword = async (email) => {
+    await new Promise(resolve => setTimeout(resolve, 500))
+    return { success: true }
   }
 
   return (
-    <AuthContext.Provider
-      value={{
-        currentUser,
-        isAuthenticated,
-        login,
-        signup,
-        logout,
-        loading,
-        // validation helpers for SignUpScreen
-        validateLoginId,
-        validateEmail,
-        validatePassword,
-        isLoginIdUnique, // currently optimistic
-        isEmailUnique    // currently optimistic
-      }}
-    >
-      {children}
+    <AuthContext.Provider value={{
+      currentUser,
+      isAuthenticated: !!currentUser,
+      login,
+      logout,
+      signup,
+      resetPassword,
+      loading
+    }}>
+      {!loading && children}
     </AuthContext.Provider>
   )
 }

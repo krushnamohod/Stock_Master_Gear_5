@@ -10,8 +10,8 @@ import { Sidebar } from "@/components/layout/Sidebar"
 import { OperationsView } from "@/components/operations/OperationsView"
 import { ProductsView } from "@/components/products/ProductsView"
 import { SettingsView } from "@/components/settings/SettingsView"
-import { AuthProvider, useAuth } from "@/context/AuthContext"
-import { StockProvider, useStock } from "@/context/StockContext"
+import { useAuth } from "@/context/AuthContext"
+import { useStock } from "@/context/StockContext"
 import { useState } from "react"
 
 function MainLayout() {
@@ -60,19 +60,9 @@ function AppContent() {
         )
     }
 
-    return (
-        <StockProvider>
-            <MainLayout />
-        </StockProvider>
-    )
+    return <MainLayout />
 }
 
 export default function Home() {
-    return (
-        <AuthProvider>
-            <StockProvider>
-                <AppContent />
-            </StockProvider>
-        </AuthProvider>
-    )
+    return <AppContent />
 }
