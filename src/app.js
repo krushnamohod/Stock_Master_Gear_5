@@ -70,6 +70,19 @@ import categoryRoutes from "./routes/categories.routes.js";
 import receiptRoutes from "./routes/receipts.routes.js";
 import deliveryRoutes from "./routes/deliveries.routes.js";
 import transferRoutes from "./routes/transfers.routes.js";
+import adjustmentRoutes from "./routes/adjustments.routes.js";
+import ledgerRoutes from "./routes/ledger.routes.js";
+import warehouseRoutes from "./routes/warehouses.routes.js";
+import locationRoutes from "./routes/locations.routes.js";
+
+app.use("/api/v1/warehouses", warehouseRoutes);
+app.use("/api/v1/locations", locationRoutes);
+
+
+app.use("/api/v1/ledger", ledgerRoutes);
+
+app.use("/api/v1/adjustments", adjustmentRoutes);
+
 // (Next parts will add: adjustments, warehouses, locations, ledger)
 
 // =====================================================

@@ -4,6 +4,10 @@
   "type": "module",
   "description": "",
   "main": "src/app.js",
+
+  "prisma": {
+  "seed": "node prisma/seed.js"
+},
   "scripts": {
     "dev": "nodemon src/app.js",
     "start": "node src/app.js",
