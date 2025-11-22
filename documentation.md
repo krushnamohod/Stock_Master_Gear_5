@@ -253,9 +253,6 @@ docker-compose down
 
 ---
 
-# StockMaster
-
-... (markdown truncated for brevity in this canvas)
 
 ## 📖 Documentation
 
@@ -276,7 +273,6 @@ For comprehensive documentation including API references, database schema, workf
 | [🔄 Workflow Examples](https://docs.google.com/document/d/1_HbrVhHvwr8g4P11MiZ0lYKgxAyB8D8JEhhrywyIG9s/edit?usp=sharing)    | Real-world usage scenarios            |
 | [🚀 Deployment Guide](https://docs.google.com/document/d/1_HbrVhHvwr8g4P11MiZ0lYKgxAyB8D8JEhhrywyIG9s/edit?usp=sharing)     | Production deployment steps           |
 
-... (rest of file continues)
 
 ---
 

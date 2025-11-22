@@ -99,6 +99,27 @@ A modern, full-featured inventory management system built with Next.js 16, React
 
 ---
 
+## 📖 Documentation
+
+### 📚 Complete Documentation
+
+For comprehensive documentation including API references, database schema, workflows, and architecture diagrams, see:
+
+**➡️ [FULL DOCUMENTATION](https://docs.google.com/document/d/1_HbrVhHvwr8g4P11MiZ0lYKgxAyB8D8JEhhrywyIG9s/edit?usp=sharing)**
+
+### Quick Links
+
+| Documentation Section                                                                                                       | Description                           |
+| --------------------------------------------------------------------------------------------------------------------------- | ------------------------------------- |
+| [🏗️ System Architecture](https://docs.google.com/document/d/1_HbrVhHvwr8g4P11MiZ0lYKgxAyB8D8JEhhrywyIG9s/edit?usp=sharing) | Three-tier architecture breakdown     |
+| [🗄️ Database Schema](https://docs.google.com/document/d/1_HbrVhHvwr8g4P11MiZ0lYKgxAyB8D8JEhhrywyIG9s/edit?usp=sharing)     | Complete data model and relationships |
+| [🔌 API Reference](https://docs.google.com/document/d/1_HbrVhHvwr8g4P11MiZ0lYKgxAyB8D8JEhhrywyIG9s/edit?usp=sharing)        | All endpoints with examples           |
+| [📊 Dashboard Guide](https://docs.google.com/document/d/1_HbrVhHvwr8g4P11MiZ0lYKgxAyB8D8JEhhrywyIG9s/edit?usp=sharing)      | Dashboard features and KPIs           |
+| [🔄 Workflow Examples](https://docs.google.com/document/d/1_HbrVhHvwr8g4P11MiZ0lYKgxAyB8D8JEhhrywyIG9s/edit?usp=sharing)    | Real-world usage scenarios            |
+| [🚀 Deployment Guide](https://docs.google.com/document/d/1_HbrVhHvwr8g4P11MiZ0lYKgxAyB8D8JEhhrywyIG9s/edit?usp=sharing)     | Production deployment steps           |
+
+---
+
 ## 🚀 Installation Guide
 
 ### Prerequisites
