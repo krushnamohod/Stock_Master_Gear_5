@@ -1,5 +1,8 @@
 // src/middleware/auth.middleware.js
 import { verifyToken } from "../utils/jwt.js";
+import dotenv from "dotenv";
+// Load ENV
+dotenv.config();
 
 /**
  * Attach decoded token payload to req.user

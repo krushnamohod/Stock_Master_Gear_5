@@ -6,13 +6,13 @@ import morgan from "morgan";
 import cookieParser from "cookie-parser";
 import rateLimit from "express-rate-limit";
 
-// Load env
+// Load ENV
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// ------------------- MIDDLEWARES -------------------
+// ------------------- PARSERS -------------------
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
@@ -22,30 +22,25 @@ const allowedOrigins = [
   "http://localhost:3000",
   "http://localhost:5173",
   "http://localhost:5174",
-  "https://admin.stockmaster.in",
   "https://app.stockmaster.in",
+  "https://admin.stockmaster.in",
 ];
 
 const corsOptions = {
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    }
-    return callback(new Error("Not allowed by CORS"));
+    if (!origin || allowedOrigins.includes(origin)) callback(null, true);
+    else callback(new Error("Not allowed by CORS"));
   },
   credentials: true,
-  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
 };
 
 app.use(cors(corsOptions));
 
-// ------------------- SECURITY HEADERS -------------------
+// ------------------- SECURITY -------------------
 app.use(
   helmet({
     crossOriginResourcePolicy: { policy: "cross-origin" },
     crossOriginEmbedderPolicy: false,
-    crossOriginOpenerPolicy: { policy: "same-origin" },
   })
 );
 
@@ -57,43 +52,51 @@ app.use(
   rateLimit({
     windowMs: 15 * 60 * 1000,
     max: 500,
-    message: "Too many requests. Try again later.",
+    message: "Too many requests — slow down.",
   })
 );
 
 // ------------------- HEALTH CHECK -------------------
 app.get("/", (req, res) => {
-  res.send("🔥 StockMaster Backend Running (Single-file mode)...");
+  res.send("🔥 Stock Master Gear 5 Backend Running...");
 });
 
 // =====================================================
-//               IMPORT ROUTES
+//                   IMPORT ROUTES
 // =====================================================
 import authRoutes from "./routes/auth.routes.js";
-// import productRoutes from "./routes/products.routes.js";
-// import receiptRoutes from "./routes/receipts.routes.js";
-// import deliveryRoutes from "./routes/delivery.routes.js";
-// import transferRoutes from "./routes/transfers.routes.js";
-// import adjustmentRoutes from "./routes/adjustments.routes.js";
-// import warehouseRoutes from "./routes/warehouse.routes.js";
-// import locationRoutes from "./routes/locations.routes.js";
-// import ledgerRoutes from "./routes/ledger.routes.js";
+import productRoutes from "./routes/products.routes.js";
+import categoryRoutes from "./routes/categories.routes.js";
+import receiptRoutes from "./routes/receipts.routes.js";
+import deliveryRoutes from "./routes/deliveries.routes.js";
+import transferRoutes from "./routes/transfers.routes.js";
+import adjustmentRoutes from "./routes/adjustments.routes.js";
+import ledgerRoutes from "./routes/ledger.routes.js";
+import warehouseRoutes from "./routes/warehouses.routes.js";
+import locationRoutes from "./routes/locations.routes.js";
+
+app.use("/api/v1/warehouses", warehouseRoutes);
+app.use("/api/v1/locations", locationRoutes);
+
+
+app.use("/api/v1/ledger", ledgerRoutes);
+
+app.use("/api/v1/adjustments", adjustmentRoutes);
+
+// (Next parts will add: adjustments, warehouses, locations, ledger)
 
 // =====================================================
-//               REGISTER ROUTES
+//                   REGISTER ROUTES
 // =====================================================
 app.use("/api/v1/auth", authRoutes);
-// app.use("/api/v1/products", productRoutes);
-// app.use("/api/v1/receipts", receiptRoutes);
-// app.use("/api/v1/deliveries", deliveryRoutes);
-// app.use("/api/v1/transfers", transferRoutes);
-// app.use("/api/v1/adjustments", adjustmentRoutes);
-// app.use("/api/v1/warehouses", warehouseRoutes);
-// app.use("/api/v1/locations", locationRoutes);
-// app.use("/api/v1/ledger", ledgerRoutes);
+app.use("/api/v1/products", productRoutes);
+app.use("/api/v1/categories", categoryRoutes);
+app.use("/api/v1/receipts", receiptRoutes);
+app.use("/api/v1/deliveries", deliveryRoutes);
+app.use("/api/v1/transfers", transferRoutes);
 
 // =====================================================
-//               START SERVER HERE
+//                   START SERVER
 // =====================================================
 app.listen(PORT, () => {
   console.log(`🚀 Server running at http://localhost:${PORT}`);

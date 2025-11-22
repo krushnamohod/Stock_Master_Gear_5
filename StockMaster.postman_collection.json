@@ -1,0 +1,369 @@
+{
+  "info": {
+    "name": "StockMaster - Full API Flow",
+    "description": "Postman collection for StockMaster ERP backend (auth, warehouses, locations, products, receipts, deliveries, transfers, adjustments, ledger, stock view).\n\nReference spec (local): file:///mnt/data/StockMaster.pdf",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:3000" },
+    { "key": "auth_token", "value": "" },
+    { "key": "warehouseId", "value": "" },
+    { "key": "locationId", "value": "" },
+    { "key": "productId", "value": "" },
+    { "key": "receiptId", "value": "" },
+    { "key": "deliveryId", "value": "" },
+    { "key": "transferId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register (create manager)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": { "raw": "{{base_url}}/api/v1/auth/register", "host": ["{{base_url}}"], "path": ["api","v1","auth","register"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Super Admin\",\n  \"email\": \"admin@stockmaster.com\",\n  \"password\": \"admin123\",\n  \"role\": \"MANAGER\"\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/api/v1/auth/login", "host": ["{{base_url}}"], "path": ["api","v1","auth","login"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@stockmaster.com\",\n  \"password\": \"admin123\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": { "exec": [], "type": "text/javascript" }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.token) {",
+                  "  pm.environment.set('auth_token', res.token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Get Profile (me)",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{auth_token}}", "type": "string" }] },
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/api/v1/auth/me", "host": ["{{base_url}}"], "path": ["api","v1","auth","me"] }
+          },
+          "response": []
+        }
+      ]
+    },
+
+    {
+      "name": "Warehouse & Location (RBAC protected)",
+      "item": [
+        {
+          "name": "Create Warehouse (MANAGER only)",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{auth_token}}", "type": "string" }] },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/api/v1/warehouses", "host": ["{{base_url}}"], "path": ["api","v1","warehouses"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Main Warehouse\",\n  \"address\": \"123, Warehouse Street\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if(res.warehouse && res.warehouse.id) pm.collectionVariables.set('warehouseId', res.warehouse.id);",
+                  "if(res.warehouse && res.warehouse.id) pm.environment.set('warehouseId', res.warehouse.id);"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Create Location (MANAGER only)",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{auth_token}}", "type": "string" }] },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/api/v1/locations", "host": ["{{base_url}}"], "path": ["api","v1","locations"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Primary Location\",\n  \"code\": \"MAIN-01\",\n  \"warehouseId\": \"{{warehouseId}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if(res.location && res.location.id) pm.environment.set('locationId', res.location.id);"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "List Warehouses (with locations)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{base_url}}/api/v1/warehouses?includeLocations=true", "host": ["{{base_url}}"], "path": ["api","v1","warehouses"], "query": [{ "key": "includeLocations", "value": "true" }] }
+          },
+          "response": []
+        },
+        {
+          "name": "List Locations (with stock)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{base_url}}/api/v1/locations?withStock=true", "host": ["{{base_url}}"], "path": ["api","v1","locations"], "query": [{ "key": "withStock", "value": "true" }] }
+          },
+          "response": []
+        },
+        {
+          "name": "Location Stock View (paged & searchable)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{base_url}}/api/v1/locations/{{locationId}}/stock?page=1&pageSize=50&q=", "host": ["{{base_url}}"], "path": ["api","v1","locations","{{locationId}}","stock"], "query": [{ "key": "page", "value": "1" }, { "key": "pageSize", "value": "50" }] }
+          },
+          "response": []
+        }
+      ]
+    },
+
+    {
+      "name": "Products & Categories",
+      "item": [
+        {
+          "name": "Create Category",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{auth_token}}", "type": "string" }] },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/api/v1/categories", "host": ["{{base_url}}"], "path": ["api","v1","categories"] },
+            "body": { "mode": "raw", "raw": "{ \"name\": \"Raw Materials\" }" }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Product",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{auth_token}}", "type": "string" }] },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/api/v1/products", "host": ["{{base_url}}"], "path": ["api","v1","products"] },
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Steel Rod\",\n  \"sku\": \"STEEL-001\",\n  \"uom\": \"kg\"\n}" }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.product && res.product.id) pm.environment.set('productId', res.product.id);"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "List Products",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{base_url}}/api/v1/products", "host": ["{{base_url}}"], "path": ["api","v1","products"] }
+          },
+          "response": []
+        }
+      ]
+    },
+
+    {
+      "name": "Receipts (incoming)",
+      "item": [
+        {
+          "name": "Create Receipt (Draft)",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{auth_token}}", "type": "string" }] },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/api/v1/receipts", "host": ["{{base_url}}"], "path": ["api","v1","receipts"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"supplier\": \"Steel Supplier Inc\",\n  \"referenceNo\": \"PO-1001\",\n  \"items\": [\n    { \"productId\": \"{{productId}}\", \"quantity\": 50, \"locationId\": \"{{locationId}}\" }\n  ]\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.receipt && res.receipt.id) pm.environment.set('receiptId', res.receipt.id);"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Validate Receipt (increase stock)",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{auth_token}}", "type": "string" }] },
+            "method": "POST",
+            "url": { "raw": "{{base_url}}/api/v1/receipts/{{receiptId}}/validate", "host": ["{{base_url}}"], "path": ["api","v1","receipts","{{receiptId}}","validate"] }
+          },
+          "response": []
+        }
+      ]
+    },
+
+    {
+      "name": "Deliveries (outgoing)",
+      "item": [
+        {
+          "name": "Create Delivery (Draft)",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{auth_token}}", "type": "string" }] },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/api/v1/deliveries", "host": ["{{base_url}}"], "path": ["api","v1","deliveries"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customer\": \"Client A\",\n  \"referenceNo\": \"SO-1001\",\n  \"items\": [ { \"productId\": \"{{productId}}\", \"quantity\": 10, \"locationId\": \"{{locationId}}\" } ]\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.delivery && res.delivery.id) pm.environment.set('deliveryId', res.delivery.id);"
+                ]
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Validate Delivery (decrease stock)",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{auth_token}}", "type": "string" }] },
+            "method": "POST",
+            "url": { "raw": "{{base_url}}/api/v1/deliveries/{{deliveryId}}/validate", "host": ["{{base_url}}"], "path": ["api","v1","deliveries","{{deliveryId}}","validate"] }
+          },
+          "response": []
+        }
+      ]
+    },
+
+    {
+      "name": "Transfers (internal)",
+      "item": [
+        {
+          "name": "Create Transfer (Draft)",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{auth_token}}", "type": "string" }] },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/api/v1/transfers", "host": ["{{base_url}}"], "path": ["api","v1","transfers"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fromLocationId\": \"{{locationId}}\",\n  \"toLocationId\": \"{{locationId}}\",\n  \"referenceNo\": \"TR-1001\",\n  \"items\": [ { \"productId\": \"{{productId}}\", \"quantity\": 5 } ]\n}"
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Validate Transfer (execute move)",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{auth_token}}", "type": "string" }] },
+            "method": "POST",
+            "url": { "raw": "{{base_url}}/api/v1/transfers/{{transferId}}/validate", "host": ["{{base_url}}"], "path": ["api","v1","transfers","{{transferId}}","validate"] }
+          },
+          "response": []
+        }
+      ]
+    },
+
+    {
+      "name": "Adjustments",
+      "item": [
+        {
+          "name": "Create Adjustment (count correction)",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{auth_token}}", "type": "string" }] },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{base_url}}/api/v1/adjustments", "host": ["{{base_url}}"], "path": ["api","v1","adjustments"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productId\": \"{{productId}}\",\n  \"locationId\": \"{{locationId}}\",\n  \"newQuantity\": 30,\n  \"reason\": \"Cycle count correction\"\n}"
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+
+    {
+      "name": "Ledger & Audit",
+      "item": [
+        {
+          "name": "Get Ledger (recent)",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{auth_token}}", "type": "string" }] },
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/api/v1/ledger?page=1&pageSize=50", "host": ["{{base_url}}"], "path": ["api","v1","ledger"], "query": [{ "key": "page", "value": "1" }, { "key": "pageSize", "value": "50" }] }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Ledger for Product",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{auth_token}}", "type": "string" }] },
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/api/v1/ledger?productId={{productId}}&page=1&pageSize=50", "host": ["{{base_url}}"], "path": ["api","v1","ledger"], "query": [{ "key": "productId", "value": "{{productId}}" }, { "key": "page", "value": "1" }, { "key": "pageSize", "value": "50" }] }
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
